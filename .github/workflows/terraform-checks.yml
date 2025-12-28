@@ -1,0 +1,45 @@
+name: "Terraform checks"
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+  push:
+    branches: [ main, master ]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [ 'terraform/infra', 'terraform/edge' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.6.0'
+
+      - name: Run terraform fmt check
+        working-directory: ${{ matrix.dir }}
+        run: terraform fmt -check -recursive
+
+      - name: Init
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: ${{ matrix.dir }}
+        run: terraform validate
+
+      - name: Plan (no-apply)
+        working-directory: ${{ matrix.dir }}
+        env:
+          TF_IN_AUTOMATION: 1
+        run: |
+          set -e
+          terraform plan -out=tfplan -input=false
+          terraform show -no-color tfplan | tee plan.txt

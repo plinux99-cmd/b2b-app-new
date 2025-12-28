@@ -1,0 +1,35 @@
+# Example overrides for infra (for development/testing)
+# Copy to terraform.tfvars and adjust as needed.
+
+# Use shorter helm waits and disable hooks for faster iteration (dev only)
+network_policy_mobile_helm_wait          = false
+network_policy_mobile_helm_timeout       = 60
+network_policy_mobile_helm_disable_hooks = true
+
+# Example: override cluster/node sizes for local testing
+# desired_size = 1
+# min_size = 1
+# max_size = 1
+
+# Example: pin the Ingress-managed ALB name (must match alb.ingress.kubernetes.io/load-balancer-name)
+# ingress_alb_name = "k8s-mobileap-internal-63a6eb7efe"  # update per customer cluster
+
+# Example: enable API Gateway integration and provide target
+# Prefer integration_uri to ALB DNS for HTTP_PROXY via VPC Link; or provide listener ARN
+# create_api_gateway_integration = true
+# integration_uri   = "http://<alb-dns>:80"  # e.g., http://k8s-mobileap-internal-63a6eb7efe-xxxxx.us-east-1.elb.amazonaws.com:80
+# alb_listener_arn  = "arn:aws:elasticloadbalancing:us-east-1:<account-id>:listener/app/<name>/<lb-id>/<listener-id>"  # alternative
+
+# Example: enable Lambda authorizer for protected routes
+# create_authorizer = true
+# authorizer_lambda_arn = "arn:aws:lambda:us-east-1:<account-id>:function:aerowise-authorizer"
+# authorizer_name = "aerowise-authorizer"
+# authorizer_identity_sources = ["$request.header.Authorization"]
+# authorizer_payload_version = "2.0"
+# authorizer_result_ttl_in_seconds = 0
+
+# Example: custom domain for API
+# create_custom_domain = true
+# custom_domain_name = "api.customer.com"  # customer-provided DNS
+# custom_domain_acm_cert_arn = "arn:aws:acm:us-east-1:<account-id>:certificate/xxxx"  # REGIONAL certificate
+# custom_domain_base_path = ""  # empty for root mapping
