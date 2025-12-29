@@ -79,6 +79,10 @@ resource "aws_db_instance" "this" {
   instance_class = var.db_instance_class
 
   allocated_storage = var.allocated_storage
+  storage_type      = var.storage_type
+  iops              = var.storage_type == "gp3" ? var.iops : null
+  storage_throughput = var.storage_type == "gp3" ? var.storage_throughput : null
+  
   db_name           = var.db_name
   username          = var.db_username
   password          = var.db_password

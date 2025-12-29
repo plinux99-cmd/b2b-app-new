@@ -55,6 +55,22 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
   }
 
+  # Optional API Gateway origin: used when api_origin_domain_name is provided.
+  dynamic "origin" {
+    for_each = length(trimspace(var.api_origin_domain_name)) > 0 ? [var.api_origin_domain_name] : []
+    content {
+      domain_name = origin.value
+      origin_id   = "api-origin"
+
+      custom_origin_config {
+        origin_protocol_policy = "https-only"
+        http_port              = 80
+        https_port             = 443
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
   aliases = var.alt_domain != "" ? [var.alt_domain] : []
 
   default_cache_behavior {
@@ -64,6 +80,20 @@ resource "aws_cloudfront_distribution" "frontend" {
     cached_methods         = ["GET", "HEAD"]
     cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     compress               = true
+  }
+
+  # Route selected API paths through the API origin when configured.
+  dynamic "ordered_cache_behavior" {
+    for_each = length(trimspace(var.api_origin_domain_name)) > 0 && length(var.api_paths) > 0 ? var.api_paths : []
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      target_origin_id       = "api-origin"
+      viewer_protocol_policy = "redirect-to-https"
+      allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods         = ["GET", "HEAD"]
+      cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+      compress               = true
+    }
   }
 
   custom_error_response {

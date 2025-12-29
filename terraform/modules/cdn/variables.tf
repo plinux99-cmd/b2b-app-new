@@ -32,3 +32,15 @@ variable "web_acl_id" {
   default     = ""
 }
 
+variable "api_origin_domain_name" {
+  type        = string
+  description = "Optional: API Gateway domain (e.g. et41gni1mk.execute-api.us-east-1.amazonaws.com) to route certain paths through CloudFront. When empty, only the S3 origin is used."
+  default     = ""
+}
+
+variable "api_paths" {
+  type        = list(string)
+  description = "Path patterns that should be forwarded to the API origin (e.g. [/app-version/check, /assetservice*, /auth*])."
+  default     = []
+}
+

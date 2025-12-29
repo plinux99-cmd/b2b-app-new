@@ -95,6 +95,8 @@ variable "retain_nat_eips" {
   default     = true
 }
 
+
+
 variable "rds_skip_final_snapshot" {
   description = "Set true to skip final snapshot on RDS destroy (faster teardown, less safe). Keep false in prod."
   type        = bool
@@ -137,26 +139,21 @@ variable "lb_controller_policy_arn" {
 }
 
 variable "create_api_gateway_integration" {
-  description = <<-DESC
-Optional: when true, instructs the API Gateway module to create the integration and routes.
-Set this to `true` when providing an integration URI/ALB listener in the same plan.
-DESC
+  description = "Deprecated: integration is now automatically created when alb_listener_arn is provided."
   type        = bool
   default     = false
 }
 
-variable "ingress_alb_name" {
-  # PROD: Must match `alb.ingress.kubernetes.io/load-balancer-name` in your cluster's Ingress.
-  description = "Name of the Ingress-managed internal ALB (must match alb.ingress.kubernetes.io/load-balancer-name)."
-  type        = string
-  default     = "k8s-mobileap-internal-63a6eb7efe"
-}
-
 variable "alb_listener_arn" {
-  # PROD: If not using `integration_uri`, provide this. Ask customer for ALB listener ARN.
-  description = "Listener ARN for the Ingress-managed ALB (e.g. arn:aws:elasticloadbalancing:<region>:<account>:listener/app/<name>/<lb-id>/<listener-id>). Required when create_api_gateway_integration is true."
+  description = "Required: Listener ARN for the ALB (e.g., arn:aws:elasticloadbalancing:<region>:<account>:listener/app/<name>/<lb-id>/<listener-id>). Must be provided to create API Gateway VPC Link integration."
   type        = string
   default     = ""
+}
+
+variable "enable_ingress_autodiscovery" {
+  description = "Whether to auto-discover the ALB from the Kubernetes Ingress. Set false when the EKS cluster/Ingress is not yet available to avoid Kubernetes provider calls during plan/refresh."
+  type        = bool
+  default     = true
 }
 
 # CDN & WAF toggles and inputs
@@ -295,9 +292,9 @@ variable "custom_domain_endpoint_type" {
 
 # Per-module Helm tuning for faster dev workflows (network_policy_mobile)
 variable "network_policy_mobile_helm_wait" {
-  description = "Pass-through to modules/network-policy.helm_wait (default true). Set to false in dev to avoid waiting on Helm installs/uninstalls."
+  description = "Pass-through to modules/network-policy.helm_wait. Default false to avoid long-running Calico Helm waits/timeouts during destroy; set true if you explicitly want Helm to wait."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "network_policy_mobile_helm_timeout" {

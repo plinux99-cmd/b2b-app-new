@@ -181,33 +181,85 @@ resource "helm_release" "awsloadbalancercontroller" {
 
 # Discover the ALB created by the Ingress Controller from the Ingress status
 data "kubernetes_ingress_v1" "internal_app" {
+  count = var.enable_ingress_autodiscovery ? 1 : 0
+
+  # Align with the actual ingress name so ALB auto-discovery works
   metadata {
-    name      = "internal-app-ingress"
+    name      = "mobileapp-alb"
     namespace = "mobileapp"
   }
-
-  depends_on = [helm_release.awsloadbalancercontroller]
 }
 
 locals {
-  ingress_alb_hostname = try(data.kubernetes_ingress_v1.internal_app.status[0].load_balancer[0].ingress[0].hostname, "")
-  ingress_alb_name     = var.ingress_alb_name
+  ingress_alb_hostname = length(data.kubernetes_ingress_v1.internal_app) > 0 ? try(data.kubernetes_ingress_v1.internal_app[0].status[0].load_balancer[0].ingress[0].hostname, "") : ""
 }
 
-# Note: ALB is managed by Kubernetes Ingress Controller and may be deleted externally.
-# Skip data lookup to allow destroy without errors. Listener ARN comes from known value.
-# data "aws_lb" "ingress_alb" {
-#   count = local.ingress_alb_name != "" ? 1 : 0
-#   name  = local.ingress_alb_name
-# }
+# Lambda authorizer for protected routes
+data "archive_file" "authorizer_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/authorizer.py"
+  output_path = "${path.module}/lambda/authorizer.zip"
+}
 
-# data "aws_lb_listener" "ingress_http_80" {
-#   count             = local.ingress_alb_name != "" ? 1 : 0
-#   load_balancer_arn = data.aws_lb.ingress_alb[0].arn
-#   port              = 80
-# }
+data "aws_iam_policy_document" "authorizer_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "api_authorizer" {
+  name               = "${var.project_name}-authorizer-role"
+  assume_role_policy = data.aws_iam_policy_document.authorizer_assume.json
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "authorizer_basic" {
+  role       = aws_iam_role.api_authorizer.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_lambda_function" "api_authorizer" {
+  function_name    = "${var.project_name}-authorizer"
+  filename         = data.archive_file.authorizer_zip.output_path
+  source_code_hash = data.archive_file.authorizer_zip.output_base64sha256
+  handler          = "authorizer.handler"
+  runtime          = "python3.11"
+  role             = aws_iam_role.api_authorizer.arn
+}
+
+# Auto-discover ALB from Ingress hostname when available
+data "aws_lb" "ingress_alb" {
+  count = local.ingress_alb_hostname != "" ? 1 : 0
+  # Extract ALB name from hostname: k8s-namespace-app-<hash>.elb.us-east-1.amazonaws.com
+  name = try(regex("^(k8s-[a-z0-9-]+)", local.ingress_alb_hostname)[0], "")
+}
+
+# Get the HTTP listener (port 80) from the discovered ALB
+data "aws_lb_listener" "ingress_http" {
+  count             = length(data.aws_lb.ingress_alb) > 0 ? 1 : 0
+  load_balancer_arn = data.aws_lb.ingress_alb[0].arn
+  port              = 80
+}
+
+locals {
+  # Auto-populate alb_listener_arn from discovered Ingress ALB, fallback to variable if set
+  alb_listener_arn_from_ingress = try(data.aws_lb_listener.ingress_http[0].arn, "")
+  effective_alb_listener_arn    = local.alb_listener_arn_from_ingress != "" ? local.alb_listener_arn_from_ingress : var.alb_listener_arn
+}
 
 # ---------- API GATEWAY + VPC LINK ----------
+# Requires alb_listener_arn to be provided in terraform.tfvars.
+# The ALB is created and managed externally (via Kubernetes Ingress Controller or manual creation).
 module "api_gateway" {
   source = "../modules/api-gateway"
 
@@ -215,13 +267,21 @@ module "api_gateway" {
   environment         = var.environment
   vpc_link_subnet_ids = module.network.private_app_subnet_ids
   vpc_link_sg_id      = module.network.vpc_link_sg_id
-  alb_listener_arn    = var.alb_listener_arn
-  # Create the integration only when explicitly enabled (set in tfvars).
-  create_integration = var.create_api_gateway_integration
+  alb_listener_arn    = local.effective_alb_listener_arn
 
-  create_authorizer                = var.create_authorizer
-  authorizer_lambda_arn            = var.authorizer_lambda_arn
-  authorizer_name                  = var.authorizer_name
+  # Create integration only if effective alb_listener_arn is available (auto-discovered or provided)
+  create_integration = local.effective_alb_listener_arn != ""
+
+  # API paths to create routes for (matching CDN paths)
+  # These are public paths served through CDN that map to ALB
+  api_paths = [
+    "/app-version/check",
+  ]
+
+  # Authorizer is only created if both flag is true AND Lambda ARN is provided
+  create_authorizer                = true
+  authorizer_lambda_arn            = aws_lambda_function.api_authorizer.arn
+  authorizer_name                  = "aerowise-authorizer"
   authorizer_identity_sources      = var.authorizer_identity_sources
   authorizer_payload_version       = var.authorizer_payload_version
   authorizer_result_ttl_in_seconds = var.authorizer_result_ttl_in_seconds
@@ -234,7 +294,15 @@ module "api_gateway" {
 
   cors_allow_origins = ["*"]
 
-  depends_on = [module.network]
+  depends_on = [module.network, data.aws_lb_listener.ingress_http]
+}
+
+resource "aws_lambda_permission" "api_authorizer_invoke" {
+  statement_id  = "AllowAPIGatewayInvokeAuthorizer"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api_authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:${module.api_gateway.api_id}/authorizers/*"
 }
 
 ### Optional: CDN (CloudFront + S3) created in infra when `create_cdn = true`
@@ -248,6 +316,19 @@ module "cdn_static" {
   acm_cert_arn = var.cdn_acm_cert_arn != "" ? var.cdn_acm_cert_arn : null
   origin_path  = ""
   web_acl_id   = var.create_waf_cdn ? module.waf_cdn[0].web_acl_arn : ""
+
+  # Use CDN as a frontend for both static content (S3) and API Gateway.
+  # Only the distribution created by this module is affected; the existing
+  # non-Terraform CloudFront distribution remains untouched.
+  api_origin_domain_name = replace(module.api_gateway.api_endpoint, "https://", "")
+  api_paths = [
+    "/app-version/check",
+    "/assetservice*",
+    "/paxservice*",
+    "/flightservice*",
+    "/notificationservice*",
+    "/auth*",
+  ]
 
 }
 

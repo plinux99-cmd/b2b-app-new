@@ -30,3 +30,4 @@ variable "retain_nat_eips" {
   description = "When NAT is disabled, retain existing NAT EIPs to avoid destroy attempts (useful when lacking EIP permissions)."
   default     = true
 }
+

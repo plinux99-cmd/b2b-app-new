@@ -27,24 +27,47 @@ resource "aws_apigatewayv2_integration" "alb_proxy" {
   integration_type = "HTTP_PROXY"
   connection_type  = "VPC_LINK"
   connection_id    = aws_apigatewayv2_vpc_link.alb_link.id
-  # Prefer explicit integration URI (e.g. "http://<alb-dns>:80").
-  # Fall back to the ALB listener ARN when an HTTP endpoint is not provided.
-  integration_uri        = length(var.integration_uri) > 0 ? var.integration_uri : var.alb_listener_arn
+  # For VPC_LINK, integration_uri MUST be an ALB listener ARN or Cloud Map service ARN
+  integration_uri        = var.alb_listener_arn != "" ? var.alb_listener_arn : ""
   integration_method     = "ANY"
   payload_format_version = "1.0"
   timeout_milliseconds   = 29000
 }
 
 locals {
-  custom_auth_routes = ["ANY /paxservice/{proxy+}", "ANY /flightservice/{proxy+}", "ANY /assetservice/{proxy+}", "ANY /notificationservice/{proxy+}"]
-  public_routes      = ["ANY /authservice/{proxy+}", "POST /data", "GET /broadcast", "GET /app-version/check", "POST /client-login"]
+  # Protected routes (require Lambda authorizer)
+  # These services require authentication: assetservice, flightservice, paxservice, notificationservice
+  protected_routes = [
+    "ANY /assetservice",
+    "ANY /assetservice/{proxy+}",
+    "ANY /flightservice",
+    "ANY /flightservice/{proxy+}",
+    "ANY /paxservice",
+    "ANY /paxservice/{proxy+}",
+    "ANY /notificationservice",
+    "ANY /notificationservice/{proxy+}",
+  ]
+  
+  # Public routes (no authorization required)
+  # These are public endpoints available without authentication
+  public_routes = [
+    "ANY /authservice",
+    "ANY /authservice/{proxy+}",
+    "POST /data",
+    "GET /broadcast",
+    "POST /client-login",
+  ]
+  
+  # API paths from CDN (converted to ANY method for all HTTP verbs)
+  # These are public paths that come from CDN configuration
+  api_path_routes = [for path in var.api_paths : "ANY ${path}"]
 }
 
 resource "aws_apigatewayv2_authorizer" "lambda" {
   count                            = var.create_authorizer ? 1 : 0
   api_id                           = aws_apigatewayv2_api.this.id
   authorizer_type                  = "REQUEST"
-  authorizer_uri                   = var.authorizer_lambda_arn
+  authorizer_uri                   = "arn:aws:apigateway:${data.aws_region.current.id}:lambda:path/2015-03-31/functions/${var.authorizer_lambda_arn}/invocations"
   name                             = var.authorizer_name != "" ? var.authorizer_name : "${var.project_name}-authorizer"
   identity_sources                 = var.authorizer_identity_sources
   authorizer_payload_format_version = var.authorizer_payload_version
@@ -52,13 +75,23 @@ resource "aws_apigatewayv2_authorizer" "lambda" {
   enable_simple_responses          = false
 }
 
-resource "aws_apigatewayv2_route" "custom_auth" {
-  for_each           = var.create_integration ? toset(local.custom_auth_routes) : toset([])
+data "aws_caller_identity" "current" {}
+
+resource "aws_apigatewayv2_route" "protected" {
+  for_each           = var.create_integration ? toset(local.protected_routes) : toset([])
   api_id             = aws_apigatewayv2_api.this.id
   route_key          = each.key
   target             = "integrations/${aws_apigatewayv2_integration.alb_proxy[0].id}"
   authorization_type = var.create_authorizer ? "CUSTOM" : "NONE"
   authorizer_id      = var.create_authorizer ? aws_apigatewayv2_authorizer.lambda[0].id : null
+}
+
+resource "aws_apigatewayv2_route" "api_paths" {
+  for_each           = var.create_integration ? toset(local.api_path_routes) : toset([])
+  api_id             = aws_apigatewayv2_api.this.id
+  route_key          = each.key
+  target             = "integrations/${aws_apigatewayv2_integration.alb_proxy[0].id}"
+  authorization_type = "NONE"
 }
 
 resource "aws_apigatewayv2_route" "public" {

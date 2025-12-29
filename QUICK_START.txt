@@ -1,0 +1,194 @@
+================================================================================
+                        QUICK REFERENCE GUIDE
+                   After terraform apply Deployment Steps
+================================================================================
+
+STEP 1: RUN TERRAFORM APPLY (5-10 minutes)
+════════════════════════════════════════════════════════════════════════════════
+
+cd /Users/pramod.kumarnavikenz.com/test9-few-thing-left/terraform/infra
+terraform validate
+terraform plan -out=tfplan
+terraform apply tfplan
+
+EXPECTED: "Apply complete! Resources: X added, Y changed, Z destroyed."
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 2: UPLOAD STATIC CONTENT TO S3 (must do manually!)
+════════════════════════════════════════════════════════════════════════════════
+
+aws s3 cp /Users/pramod.kumarnavikenz.com/test9-few-thing-left/terraform/edge/static/index.html \
+  s3://aerowise-t1-edge-static-prod/index.html \
+  --content-type "text/html; charset=utf-8" \
+  --cache-control "max-age=3600"
+
+EXPECTED: "upload: .../index.html to s3://aerowise-t1-edge-static-prod/index.html"
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 3: INVALIDATE CLOUDFRONT CACHE
+════════════════════════════════════════════════════════════════════════════════
+
+aws cloudfront create-invalidation \
+  --distribution-id E1XM2A32MZPP1F \
+  --paths "/*"
+
+EXPECTED: Invalidation ID (e.g., "I3XYZ123ABC")
+
+Wait 1-2 minutes for cache invalidation to complete.
+
+════════════════════════════════════════════════════════════════════════════════
+STEP 4: QUICK VERIFICATION (Copy & Paste All)
+════════════════════════════════════════════════════════════════════════════════
+
+# Test 1: Verify Terraform Configuration
+echo "TEST 1: Terraform Configuration"
+cd /Users/pramod.kumarnavikenz.com/test9-few-thing-left/terraform/infra && terraform validate && echo "✓ PASS"
+
+# Test 2: Check EKS Cluster
+echo ""
+echo "TEST 2: EKS Cluster Status"
+aws eks describe-cluster --name aerowise-t1-eks --query 'cluster.status' --output text
+
+# Test 3: Check ALB
+echo ""
+echo "TEST 3: Load Balancer Status"
+aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `k8s-mobileap`)].State.Code' --output text
+
+# Test 4: Check API Gateway Routes
+echo ""
+echo "TEST 4: API Gateway Routes Count"
+aws apigatewayv2 get-routes --api-id 0rjx2pu6e9 --query 'Items | length' --output text
+
+# Test 5: Public Route Test (should return 200)
+echo ""
+echo "TEST 5: Public Route Test (/app-version/check)"
+curl -s -w "Status: %{http_code}\n" https://0rjx2pu6e9.execute-api.us-east-1.amazonaws.com/app-version/check | head -2
+
+# Test 6: Protected Route Without Auth (should return 401)
+echo ""
+echo "TEST 6: Protected Route WITHOUT Auth (/assetservice)"
+curl -s -w "Status: %{http_code}\n" https://0rjx2pu6e9.execute-api.us-east-1.amazonaws.com/assetservice | head -2
+
+# Test 7: CloudFront Static Content
+echo ""
+echo "TEST 7: CloudFront Static Content"
+curl -s --compressed https://d2du4fpuifrh5y.cloudfront.net/ | grep -c "AeroWise" && echo "✓ Static content found"
+
+# Test 8: CloudFront API Route
+echo ""
+echo "TEST 8: CloudFront API Route"
+curl -s -w "Status: %{http_code}\n" https://d2du4fpuifrh5y.cloudfront.net/app-version/check | head -2
+
+════════════════════════════════════════════════════════════════════════════════
+EXPECTED TEST RESULTS
+════════════════════════════════════════════════════════════════════════════════
+
+TEST 1: ✓ PASS (Terraform validation passes)
+TEST 2: ACTIVE (EKS cluster running)
+TEST 3: active (ALB is active)
+TEST 4: 17 (17 routes created)
+TEST 5: Status: 200 (Public route accessible)
+TEST 6: Status: 401 (Protected route blocked without auth)
+TEST 7: ✓ Static content found (index.html served)
+TEST 8: Status: 200 (API available via CDN)
+
+════════════════════════════════════════════════════════════════════════════════
+INFRASTRUCTURE ENDPOINTS
+════════════════════════════════════════════════════════════════════════════════
+
+API Gateway (Direct):
+  https://0rjx2pu6e9.execute-api.us-east-1.amazonaws.com
+
+CloudFront CDN:
+  https://d2du4fpuifrh5y.cloudfront.net
+
+S3 Bucket:
+  aerowise-t1-edge-static-prod
+
+════════════════════════════════════════════════════════════════════════════════
+API ROUTES
+════════════════════════════════════════════════════════════════════════════════
+
+PROTECTED ROUTES (require Authorization header):
+  ✓ /assetservice
+  ✓ /flightservice
+  ✓ /paxservice
+  ✓ /notificationservice
+
+PUBLIC ROUTES (no authorization needed):
+  ✓ /app-version/check
+  ✓ /authservice
+  ✓ /data
+  ✓ /broadcast
+  ✓ /client-login
+
+════════════════════════════════════════════════════════════════════════════════
+COMMON ISSUES & SOLUTIONS
+════════════════════════════════════════════════════════════════════════════════
+
+ISSUE: CloudFront returns 403 for static content
+SOLUTION: Run cache invalidation:
+  aws cloudfront create-invalidation --distribution-id E1XM2A32MZPP1F --paths "/*"
+
+─────────────────────────────────────────────────────────────────────────────
+
+ISSUE: Protected routes return 500 instead of 200 with auth header
+ROOT CAUSE: VPC Link → ALB routing issue (known issue)
+STATUS: Investigating
+WORKAROUND: Use public routes or wait for fix
+
+─────────────────────────────────────────────────────────────────────────────
+
+ISSUE: index.html not showing in CloudFront
+SOLUTION: Run Step 2 and Step 3 (upload to S3 + invalidate cache)
+
+─────────────────────────────────────────────────────────────────────────────
+
+ISSUE: EKS cluster not ready
+SOLUTION: Wait 5-10 minutes after terraform apply for cluster to fully initialize
+
+─────────────────────────────────────────────────────────────────────────────
+
+ISSUE: ALB targets showing unhealthy
+SOLUTION: Check security groups and Kubernetes pod logs
+  kubectl logs -l app=app1 -n mobileapp
+  kubectl logs -l app=app2 -n mobileapp
+
+════════════════════════════════════════════════════════════════════════════════
+IMPORTANT NOTES
+════════════════════════════════════════════════════════════════════════════════
+
+⚠️  DO NOT FORGET:
+   1. After terraform apply, upload index.html (Step 2)
+   2. After uploading, invalidate CloudFront cache (Step 3)
+   3. Wait 1-2 minutes for cache invalidation to complete
+   4. Protected routes need Authorization header to work properly
+
+📝 REMEMBER:
+   1. Lambda Authorizer is configured for 4 protected services
+   2. Public routes do NOT require authorization
+   3. CloudFront caches both static content and API responses
+   4. All endpoints are HTTPS only
+   5. EKS cluster takes ~5 minutes to become fully operational
+
+🔒 SECURITY:
+   1. Protected routes return 401 without auth header (working as intended)
+   2. Lambda authorizer validates Authorization header
+   3. All traffic is encrypted (HTTPS/TLS)
+   4. CloudFront WAF is enabled with AWS managed rules
+   5. S3 bucket has OAC (Origin Access Control) for security
+
+════════════════════════════════════════════════════════════════════════════════
+FOR MORE DETAILED COMMANDS
+════════════════════════════════════════════════════════════════════════════════
+
+See: /Users/pramod.kumarnavikenz.com/test9-few-thing-left/SANITY_CHECKS.txt
+
+That file contains:
+  • 50+ validation commands
+  • Detailed troubleshooting guide
+  • Health check scripts
+  • Resource inspection commands
+  • Complete testing procedures
+
+════════════════════════════════════════════════════════════════════════════════

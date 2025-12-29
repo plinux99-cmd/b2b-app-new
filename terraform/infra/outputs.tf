@@ -11,13 +11,23 @@ output "public_subnet_ids" {
 }
 
 output "alb_http_listener_arn" {
-  # ALB managed by Kubernetes Ingress Controller; skip lookup during destroy
-  value = local.ingress_alb_hostname != "" ? "arn:aws:elasticloadbalancing:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:listener/app/k8s-mobileap-internal-63a6eb7efe/*" : ""
+  description = "ALB HTTP listener ARN auto-discovered from Kubernetes Ingress"
+  value       = try(data.aws_lb_listener.ingress_http[0].arn, "")
 }
 
-output "alb_dns_name" {
-  description = "Internal ALB DNS name for VPC Link integration"
+output "ingress_alb_hostname" {
+  description = "Internal ALB DNS name discovered from Kubernetes Ingress status"
   value       = local.ingress_alb_hostname
+}
+
+output "ingress_alb_arn" {
+  description = "Internal ALB ARN auto-discovered from Kubernetes Ingress"
+  value       = try(data.aws_lb.ingress_alb[0].arn, "")
+}
+
+output "effective_alb_listener_arn" {
+  description = "Effective ALB listener ARN used by API Gateway (auto-discovered or from variable)"
+  value       = local.effective_alb_listener_arn
 }
 
 // Removed `alb_arn` placeholder to avoid confusion. ALB is managed by Ingress Controller.

@@ -67,6 +67,24 @@ variable "skip_final_snapshot" {
   default     = false
 }
 
+variable "storage_type" {
+  description = "Storage type for RDS (gp2, gp3, io1, io2)"
+  type        = string
+  default     = "gp3"
+}
+
+variable "iops" {
+  description = "IOPS for gp3 storage type (3000-16000)"
+  type        = number
+  default     = 3000
+}
+
+variable "storage_throughput" {
+  description = "Storage throughput in MB/s for gp3 (125-1000)"
+  type        = number
+  default     = 125
+}
+
 variable "eks_node_sg_id" {
   description = "Security group ID of EKS worker nodes"
   type        = string

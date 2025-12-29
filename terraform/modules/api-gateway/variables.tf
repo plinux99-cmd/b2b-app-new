@@ -19,6 +19,12 @@ variable "alb_listener_arn" {
   default = ""
 }
 
+variable "alb_hostname" {
+  description = "ALB hostname for constructing the integration_uri (e.g., internal-k8s-mobileap-3ad48e132b-455926067.us-east-1.elb.amazonaws.com)"
+  type        = string
+  default     = ""
+}
+
 variable "integration_uri" {
   description = "Full URI used by API Gateway integration (e.g. http://<alb-dns>:80)"
   type        = string
@@ -66,7 +72,7 @@ variable "create_authorizer" {
   default     = false
 
   validation {
-    condition     = var.create_authorizer == false || length(trim(var.authorizer_lambda_arn)) > 0
+    condition     = var.create_authorizer == false || length(trimspace(var.authorizer_lambda_arn)) > 0
     error_message = "When create_authorizer is true, authorizer_lambda_arn must be provided."
   }
 }
@@ -129,4 +135,10 @@ variable "custom_domain_endpoint_type" {
   description = "Endpoint type for the custom domain (REGIONAL or EDGE; HTTP APIs support REGIONAL)."
   type        = string
   default     = "REGIONAL"
+}
+
+variable "api_paths" {
+  description = "List of API paths to create routes for (e.g., ['/app-version/check', '/assetservice*', '/auth*']). Each path will be converted to an API Gateway route with ANY method."
+  type        = list(string)
+  default     = ["/app-version/check"]
 }

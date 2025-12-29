@@ -19,5 +19,18 @@ create_cdn     = true
 create_waf_cdn = true
 
 # Enable API Gateway integration and routes to the internal ALB
-create_api_gateway_integration = true
-alb_listener_arn               = "arn:aws:elasticloadbalancing:us-east-1:339712886638:listener/app/k8s-mobileap-internal-63a6eb7efe/a009f7db15c21764/d712add9ffb15817"
+# IMPORTANT: Set alb_listener_arn to "" (empty) until the real mobileapp-alb Ingress exists.
+# Once EKS cluster and mobileapp-alb Ingress are created and healthy, update this with the real listener ARN.
+# ALB Listener ARN format: arn:aws:elasticloadbalancing:<region>:<account>:listener/app/<name>/<lb-id>/<listener-id>
+alb_listener_arn = ""
+
+# Enable optional authorizer (set to true if Lambda authorizer exists)
+create_authorizer     = true
+authorizer_lambda_arn = "" # Lambda is created by this stack (aerowise-authorizer)
+
+# Ingress-based ALB auto-discovery: set false to avoid Kubernetes API calls when cluster is not ready
+# Once EKS cluster and mobileapp-alb Ingress are created, set to true for auto-discovery
+enable_ingress_autodiscovery = false
+
+# Speed up destroy and avoid snapshot name conflicts
+rds_skip_final_snapshot = true

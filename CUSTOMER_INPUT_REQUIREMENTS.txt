@@ -1,0 +1,660 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║              CUSTOMER INPUT REQUIREMENTS - PRODUCTION DEPLOYMENT           ║
+║                                                                            ║
+║              Checklist of information needed from customer                 ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+
+SECTION 1: PROJECT & ENVIRONMENT BASICS
+════════════════════════════════════════════════════════════════════════════════
+
+1.1 Project Identification
+────────────────────────────
+[ ] Project Name
+    Default: aerowise
+    Example: my-company-api
+    Notes: Used for naming all AWS resources
+    Format: alphanumeric, hyphens allowed, lowercase
+    
+[ ] Environment Name
+    Default: prod
+    Options: dev, staging, prod, test
+    Notes: Will be appended to resource names
+    
+[ ] AWS Account ID
+    Example: 123456789012
+    Notes: The AWS account where infrastructure will be deployed
+    
+[ ] AWS Region
+    Default: us-east-1
+    Options: us-east-1, us-west-2, eu-west-1, ap-southeast-1, etc.
+    Notes: Must have appropriate service availability
+
+
+SECTION 2: NETWORK CONFIGURATION
+════════════════════════════════════════════════════════════════════════════════
+
+2.1 VPC Configuration
+─────────────────────
+[ ] Use Existing VPC?
+    Yes [ ]  No [ ] (recommended for first deployment)
+    
+    IF YES - Provide:
+    [ ] VPC ID
+        Format: vpc-1234567890abcdef0
+        Notes: VPC must have sufficient IP space
+        
+    [ ] Available Subnets
+        Public subnets: _________________________
+        Private subnets: _________________________
+        Notes: Need at least 2 public + 2 private subnets
+    
+    IF NO - Provide:
+    [ ] VPC CIDR Block
+        Default: 10.0.0.0/16
+        Notes: Main IP address range for the VPC
+        
+    [ ] Public Subnet CIDR Blocks
+        Example: 10.0.1.0/24, 10.0.2.0/24
+        Notes: Need at least 2 public subnets in different AZs
+        
+    [ ] Private App Subnet CIDR Blocks
+        Example: 10.0.11.0/24, 10.0.12.0/24
+        Notes: Where EKS worker nodes will run
+        
+    [ ] Private Data Subnet CIDR Blocks
+        Example: 10.0.21.0/24, 10.0.22.0/24
+        Notes: Where RDS database will run
+
+2.2 Availability Zones
+──────────────────────
+[ ] Preferred AZs
+    Example: us-east-1a, us-east-1b, us-east-1c
+    Notes: Recommend 2-3 AZs for high availability
+    Number needed: ________
+
+
+SECTION 3: DOMAIN & DNS
+════════════════════════════════════════════════════════════════════════════════
+
+3.1 API Domain
+──────────────
+[ ] Use Custom Domain for API?
+    Yes [ ]  No [ ]
+    
+    IF YES - Provide:
+    [ ] Domain Name
+        Example: api.example.com
+        Notes: Must own the domain and have access to DNS settings
+        
+    [ ] ACM Certificate ARN (Regional - same as API region)
+        Format: arn:aws:acm:us-east-1:123456789012:certificate/xxxxx
+        Notes: Must be in the same region as API Gateway
+        Status: [ ] Already created  [ ] Need to create
+        
+    [ ] Base Path (optional)
+        Example: /v1 or empty for root
+        Notes: Prefix path for API mapping
+
+3.2 CloudFront CDN Domain (Optional)
+──────────────────────────────────────
+[ ] Use Custom Domain for CDN?
+    Yes [ ]  No [ ]
+    
+    IF YES - Provide:
+    [ ] Alt Domain Name (CNAME)
+        Example: cdn.example.com
+        Notes: Alternative domain for CloudFront distribution
+        
+    [ ] ACM Certificate ARN (us-east-1 ONLY)
+        Format: arn:aws:acm:us-east-1:123456789012:certificate/xxxxx
+        Notes: MUST be in us-east-1 (CloudFront requirement)
+        Status: [ ] Already created  [ ] Need to create
+
+
+SECTION 4: DATABASE (RDS) CONFIGURATION
+════════════════════════════════════════════════════════════════════════════════
+
+4.1 Database Parameters
+───────────────────────
+[ ] Database Name
+    Default: aerowise_db
+    Example: production_db
+    Notes: Will be created automatically
+    
+[ ] Database Master Username
+    Default: postgres
+    Example: dbadmin
+    Notes: Admin user for database access
+    
+[ ] Database Master Password
+    [ ] Generate random (recommended)
+    [ ] Use custom password: ________________
+    Notes: Minimum 8 characters, store securely
+    
+[ ] Database Instance Class
+    Default: db.t3.medium
+    Options: db.t3.small, db.t3.medium, db.t3.large, db.t4g.medium, etc.
+    Notes: Determines compute resources and cost
+    
+[ ] Allocated Storage Size
+    Default: 20 GB
+    Example: 50, 100, 200
+    Notes: Starting size; can be increased later (storage auto-scaling supported)
+    
+[ ] Storage Type
+    ✅ GP3 (Recommended)
+        IOPS: 3000 (default, range: 3000-16000)
+        Throughput: 125 MB/s (default, range: 125-1000)
+    [ ] GP2 (Legacy)
+    [ ] IO1 (High Performance)
+    [ ] IO2 (Latest High Performance)
+    
+[ ] Backup Retention Period
+    Default: 7 days
+    Range: 1-35 days
+    Notes: How long to keep automated backups
+    
+[ ] Enable Multi-AZ?
+    ✅ Enabled (Default - Recommended for production)
+    [ ] Disabled (Dev/Test only)
+    Notes: Automatic failover to standby in different AZ
+    
+[ ] Enable Performance Insights?
+    ✅ Enabled (Default)
+    [ ] Disabled
+    Notes: Database performance monitoring
+    
+[ ] Enable Storage Encryption?
+    ✅ Enabled (Default)
+    [ ] Disabled
+    Notes: Encrypt data at rest
+    
+[ ] KMS Key for Encryption
+    [ ] Use default AWS managed key (simplest)
+    [ ] Use customer managed key
+        ARN: _________________________
+        Notes: Must have access to KMS key
+        
+[ ] Final Snapshot on Destroy?
+    ✅ Create snapshot (Default - Recommended for production)
+    [ ] Skip final snapshot (Dev/Test only)
+    Notes: Safety measure to prevent data loss
+
+
+SECTION 5: KUBERNETES (EKS) CONFIGURATION
+════════════════════════════════════════════════════════════════════════════════
+
+5.1 EKS Cluster
+────────────────
+[ ] Cluster Name
+    Default: aerowise-prod-cluster
+    Example: my-api-prod-cluster
+    Notes: Name of the EKS cluster
+    
+[ ] Kubernetes Version
+    Default: 1.33
+    Options: 1.30, 1.31, 1.32, 1.33, 1.34
+    Notes: Latest stable version recommended
+    
+[ ] Node Group Name
+    Default: primary
+    Example: app-nodes
+    Notes: Name for worker node group
+
+5.2 Auto-Scaling Configuration
+───────────────────────────────
+[ ] Desired Number of Nodes
+    Default: 2
+    Range: 1-10
+    Notes: Target number of worker nodes
+    
+[ ] Minimum Number of Nodes
+    Default: 1
+    Range: 1-5
+    Notes: Minimum for auto-scaling
+    
+[ ] Maximum Number of Nodes
+    Default: 4
+    Range: 2-20
+    Notes: Maximum for auto-scaling
+    
+[ ] Node Instance Types
+    Default: t3.medium
+    Options: t3.medium, t3.large, t3.xlarge, m5.large, m5.xlarge, c5.large, etc.
+    Notes: EC2 instance type for worker nodes
+    Multiple types: [ ] Yes  [ ] No
+    
+    If multiple:
+    Type 1: _________________________
+    Type 2: _________________________
+    Type 3: _________________________
+
+
+SECTION 6: API GATEWAY CONFIGURATION
+════════════════════════════════════════════════════════════════════════════════
+
+6.1 API Routes
+───────────────
+[ ] API Paths to Expose
+    
+    Protected Routes (require authentication):
+    ✅ /assetservice
+    ✅ /flightservice
+    ✅ /paxservice
+    ✅ /notificationservice
+    
+    Public Routes (no authentication):
+    ✅ /authservice
+    ✅ /app-version/check
+    ✅ /data
+    ✅ /broadcast
+    ✅ /client-login
+    
+    Additional custom routes needed?
+    [ ] No - use defaults above
+    [ ] Yes - list them:
+        Route 1: _________________________
+        Route 2: _________________________
+        Route 3: _________________________
+        Notes: Format: /path or /path/subpath
+
+6.2 API Authorizer (Lambda)
+────────────────────────────
+[ ] Use API Authorization?
+    ✅ Yes (Default - Recommended for protected services)
+    [ ] No
+    
+    IF YES - Provide:
+    [ ] Lambda Authorizer ARN
+        Format: arn:aws:lambda:us-east-1:123456789012:function:my-authorizer
+        Notes: Existing Lambda function for token validation
+        Status: [ ] Already created  [ ] Will be created
+        
+    [ ] Authorization Type
+        ✅ Token-based (Bearer token)
+        [ ] Request-based
+        Notes: How tokens are passed and validated
+        
+    [ ] Token Identity Source
+        ✅ Authorization header (recommended)
+        [ ] Custom header: ________________
+        [ ] Query parameter: ________________
+
+6.3 API Throttling & Rate Limiting
+────────────────────────────────────
+[ ] Rate Limit (requests per second)
+    Default: 2000
+    Example: 1000, 5000, 10000
+    
+[ ] Burst Limit (max concurrent requests)
+    Default: 5000
+    Example: 2000, 10000, 20000
+    Notes: Temporary spike capacity
+
+
+SECTION 7: SECURITY & WAF
+════════════════════════════════════════════════════════════════════════════════
+
+7.1 Web Application Firewall (WAF)
+──────────────────────────────────
+[ ] Enable WAF for API Gateway?
+    [ ] Yes
+    [ ] No (Default)
+    
+    IF YES - Provide rules or use AWS managed rules
+    
+[ ] Enable WAF for CloudFront CDN?
+    [ ] Yes
+    [ ] No (Default)
+    
+    IF YES - Provide rules or use AWS managed rules
+
+7.2 SSL/TLS Configuration
+──────────────────────────
+[ ] API TLS Policy
+    ✅ TLS 1.2 (Default - compatible)
+    [ ] TLS 1.3 (Newest - better performance)
+    
+[ ] CloudFront TLS Policy
+    ✅ TLS 1.2 (Default)
+    [ ] TLS 1.3
+    
+[ ] Custom Security Groups
+    [ ] Use defaults (recommended)
+    [ ] Provide custom:
+        ALB SG: _________________________
+        EKS Node SG: _________________________
+        VPC Link SG: _________________________
+
+
+SECTION 8: MONITORING & LOGGING
+════════════════════════════════════════════════════════════════════════════════
+
+8.1 CloudWatch Logging
+───────────────────────
+[ ] API Gateway Logs
+    ✅ Enabled (Default)
+    [ ] Disabled
+    Retention: 90 days
+    
+[ ] CloudFront Access Logs
+    [ ] Enable
+    [ ] Disable (Default)
+    
+    IF ENABLED:
+    [ ] S3 Bucket for logs
+        Bucket name: _________________________
+        Notes: Must pre-create and configure
+        
+[ ] RDS Enhanced Monitoring
+    ✅ Enabled (Default)
+    [ ] Disabled
+    Granularity: 60 seconds
+
+8.2 Additional Monitoring
+──────────────────────────
+[ ] Enable CloudTrail?
+    ✅ Enabled (Default - Recommended for audit trail)
+    [ ] Disabled
+    
+[ ] Enable GuardDuty (threat detection)?
+    ✅ Enabled (Default)
+    [ ] Disabled
+    
+[ ] Enable Security Hub?
+    ✅ Enabled (Default)
+    [ ] Disabled
+    
+[ ] Enable Inspector (vulnerability scanning)?
+    ✅ Enabled (Default)
+    [ ] Disabled
+
+
+SECTION 9: CDN & STATIC CONTENT
+════════════════════════════════════════════════════════════════════════════════
+
+9.1 CloudFront Distribution
+────────────────────────────
+[ ] Enable CloudFront CDN?
+    [ ] Yes
+    [ ] No (Default)
+    
+    IF YES:
+    [ ] S3 Bucket Name for Static Content
+        Default: aerowise-t1-edge-static-prod
+        Custom: _________________________
+        Notes: Will be created automatically
+        
+    [ ] Cache Behavior
+        [ ] Default (aggressive caching)
+        [ ] Custom
+        TTL (seconds): _________________________
+        
+    [ ] Origin Shield (additional caching layer)
+        [ ] Enable
+        [ ] Disable (Default)
+        Notes: Reduces origin load, increases cost
+
+9.2 Static Content
+───────────────────
+[ ] Static Content Type
+    [ ] Use default dashboard HTML
+    [ ] Upload custom content
+    
+    IF CUSTOM:
+    [ ] File path or S3 location: _________________________
+    [ ] Cache control settings: _________________________
+
+
+SECTION 10: BACKUP & DISASTER RECOVERY
+════════════════════════════════════════════════════════════════════════════════
+
+10.1 Backup Strategy
+────────────────────
+[ ] RDS Backup Retention
+    Default: 7 days
+    Custom: __________ days
+    
+[ ] Final Snapshot on Destroy?
+    ✅ Yes (Recommended for production)
+    [ ] No
+    
+[ ] Automated Backup Window
+    Preferred time: _________________________
+    Notes: When daily backups should run (UTC)
+    
+[ ] Multi-region Backup?
+    [ ] Yes - replicate to region: __________
+    [ ] No (Default)
+
+10.2 Disaster Recovery
+──────────────────────
+[ ] Enable cross-region failover?
+    [ ] Yes
+    [ ] No (Default)
+    
+    IF YES:
+    [ ] Secondary region: __________
+    [ ] RTO (Recovery Time Objective) requirement: __________ minutes
+    [ ] RPO (Recovery Point Objective) requirement: __________ minutes
+
+
+SECTION 11: COST OPTIMIZATION
+════════════════════════════════════════════════════════════════════════════════
+
+11.1 Compute Resources
+───────────────────────
+[ ] Reserved Instances (cost savings)?
+    [ ] Yes - duration: [ ] 1 year  [ ] 3 years
+    [ ] No - On-demand (default)
+    
+[ ] Spot Instances for EKS nodes?
+    [ ] Yes (cost savings, less reliable)
+    [ ] No (default - on-demand only)
+
+11.2 Storage Optimization
+──────────────────────────
+[ ] RDS Storage Auto-scaling?
+    ✅ Enabled (Default - prevents outages)
+    [ ] Disabled
+    Max size: __________ GB
+    
+[ ] Intelligent-Tiering for S3?
+    [ ] Enable
+    [ ] Disable (Default)
+
+
+SECTION 12: TAGS & LABELING
+════════════════════════════════════════════════════════════════════════════════
+
+12.1 Resource Tags
+───────────────────
+[ ] Standard Tags (recommended):
+    ✅ Project = aerowise
+    ✅ Environment = prod
+    ✅ ManagedBy = terraform
+    
+[ ] Additional Tags:
+    Tag 1 Name: _________________________ Value: _________________________
+    Tag 2 Name: _________________________ Value: _________________________
+    Tag 3 Name: _________________________ Value: _________________________
+    Tag 4 Name: _________________________ Value: _________________________
+    
+    Examples:
+    - CostCenter: eng-platform
+    - Owner: infrastructure-team
+    - Department: backend
+    - Compliance: hipaa
+
+
+SECTION 13: CUSTOMER CONTACT & SUPPORT
+════════════════════════════════════════════════════════════════════════════════
+
+13.1 Primary Contact
+─────────────────────
+[ ] Name: _________________________
+[ ] Email: _________________________
+[ ] Phone: _________________________
+[ ] Role: _________________________
+
+13.2 Secondary Contact
+──────────────────────
+[ ] Name: _________________________
+[ ] Email: _________________________
+[ ] Phone: _________________________
+
+13.3 Escalation Contact
+─────────────────────────
+[ ] Name: _________________________
+[ ] Email: _________________________
+[ ] Phone: _________________________
+
+
+SECTION 14: SPECIAL REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+14.1 Compliance & Regulations
+──────────────────────────────
+[ ] Compliance Required?
+    [ ] HIPAA (healthcare data)
+    [ ] PCI-DSS (payment data)
+    [ ] SOC2 (security compliance)
+    [ ] GDPR (EU data protection)
+    [ ] None
+    
+[ ] Data Residency Requirements?
+    [ ] Region: _________________________
+    [ ] Notes: _________________________
+
+14.2 Integration Requirements
+──────────────────────────────
+[ ] VPN/Direct Connect?
+    [ ] Yes - IP range: _________________________
+    [ ] No
+    
+[ ] SSO/SAML Integration?
+    [ ] Yes - Provider: _________________________
+    [ ] No
+    
+[ ] Custom Authorization Logic?
+    [ ] Yes - Details: _________________________
+    [ ] No
+
+14.3 Performance Requirements
+──────────────────────────────
+[ ] Expected QPS (Queries Per Second): __________
+[ ] Peak Traffic Multiplier: __________ x
+[ ] Latency SLO (target): __________ ms
+[ ] Availability SLO: 99.9% [ ]  99.95% [ ]  99.99% [ ]
+
+
+SECTION 15: DEPLOYMENT PREFERENCES
+════════════════════════════════════════════════════════════════════════════════
+
+15.1 Deployment Strategy
+─────────────────────────
+[ ] Blue-Green Deployment?
+    [ ] Yes
+    [ ] No (default)
+    
+[ ] Canary Deployments?
+    [ ] Yes - traffic shift: __________ %/minute
+    [ ] No (default)
+    
+[ ] Rolling Updates?
+    [ ] Yes - max surge: __________ pods
+    [ ] No
+
+15.2 Maintenance Windows
+─────────────────────────
+[ ] Preferred Maintenance Window
+    Day: _________________________
+    Time (UTC): _________________________
+    Duration: __________ hours
+    Notes: When updates/patches can be applied
+
+
+════════════════════════════════════════════════════════════════════════════════
+
+COMPLETION CHECKLIST
+════════════════════════════════════════════════════════════════════════════════
+
+Required Sections (MUST complete):
+  [ ] Section 1: Project & Environment Basics
+  [ ] Section 2: Network Configuration
+  [ ] Section 3: Domain & DNS
+  [ ] Section 4: Database Configuration
+  [ ] Section 5: Kubernetes Configuration
+  [ ] Section 6: API Gateway Configuration
+  [ ] Section 13: Customer Contact
+
+Recommended Sections:
+  [ ] Section 7: Security & WAF
+  [ ] Section 8: Monitoring & Logging
+  [ ] Section 9: CDN & Static Content
+  [ ] Section 10: Backup & Disaster Recovery
+
+Optional Sections:
+  [ ] Section 11: Cost Optimization
+  [ ] Section 12: Tags & Labeling
+  [ ] Section 14: Special Requirements
+  [ ] Section 15: Deployment Preferences
+
+
+════════════════════════════════════════════════════════════════════════════════
+
+QUICK DEFAULTS SUMMARY
+════════════════════════════════════════════════════════════════════════════════
+
+If customer wants to use all defaults (fastest deployment):
+
+terraform.tfvars would be minimal:
+────────────────────────────────────
+
+project_name     = "aerowise"
+environment      = "prod"
+aws_region       = "us-east-1"
+cluster_version  = "1.33"
+
+# Network (creates new)
+create_vpc = true
+vpc_cidr   = "10.0.0.0/16"
+
+# Database
+db_name           = "aerowise_db"
+db_username       = "postgres"
+db_password       = "generate-strong-password-here"
+db_instance_class = "db.t3.medium"
+allocated_storage = 20
+storage_type      = "gp3"     # ← NEW: Always uses gp3
+
+# EKS
+desired_size  = 2
+min_size      = 1
+max_size      = 4
+instance_types = ["t3.medium"]
+
+# API Gateway
+create_authorizer = true
+
+# CDN
+create_cdn      = true
+create_waf_cdn  = false
+create_waf_api  = false
+
+# Security
+cloudtrail_enabled = true
+guardduty_enabled  = true
+
+
+════════════════════════════════════════════════════════════════════════════════
+
+For questions or clarifications, contact the deployment team:
+  Email: deployment@example.com
+  Slack: #infrastructure-deployments
+
+Last Updated: 28 December 2025
+Version: 1.0
