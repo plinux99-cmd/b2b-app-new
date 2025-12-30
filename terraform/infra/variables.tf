@@ -196,6 +196,12 @@ variable "cdn_acm_cert_arn" {
   default     = ""
 }
 
+variable "cdn_index_html_source_path" {
+  description = "Optional: Local path to index.html file to upload to S3 (e.g., 'terraform/edge/static/index.html'). Leave empty to skip automatic upload."
+  type        = string
+  default     = ""
+}
+
 variable "create_waf_api" {
   description = "Whether to create a regional WAF (API Gateway) in the infra stack"
   type        = bool

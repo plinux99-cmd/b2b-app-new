@@ -118,6 +118,8 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
+
+
   viewer_certificate {
     cloudfront_default_certificate = var.acm_cert_arn == null || var.acm_cert_arn == "" ? true : false
     acm_certificate_arn            = var.acm_cert_arn != null && var.acm_cert_arn != "" ? var.acm_cert_arn : null
@@ -129,3 +131,16 @@ resource "aws_cloudfront_distribution" "frontend" {
     Name = "frontend-cf-${var.name_suffix}"
   }
 }
+
+# Upload index.html to S3 bucket (when source path is provided)
+resource "aws_s3_object" "index_html" {
+  count        = var.index_html_source_path != "" ? 1 : 0
+  bucket       = aws_s3_bucket.static_site.id
+  key          = "index.html"
+  source       = var.index_html_source_path
+  content_type = "text/html; charset=utf-8"
+  etag         = filemd5(var.index_html_source_path)
+
+  depends_on = [aws_s3_bucket.static_site]
+}
+

@@ -6,7 +6,7 @@ set -euo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
 NAMESPACE="mobileapp"
-INGRESS_NAME="internal-app-ingress"
+INGRESS_NAME="internal-k8s-mobileap-mobileap"
 FULL_CHECK="${1:-}"
 TEST_ENDPOINT="${2:-}"
 

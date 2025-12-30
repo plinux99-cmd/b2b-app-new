@@ -18,6 +18,9 @@ create_waf_api = false
 create_cdn     = true
 create_waf_cdn = true
 
+# CDN: Upload index.html from local static folder
+cdn_index_html_source_path = "static/index.html"
+
 # Enable API Gateway integration and routes to the internal ALB
 # IMPORTANT: Set alb_listener_arn to "" (empty) until the real mobileapp-alb Ingress exists.
 # Once EKS cluster and mobileapp-alb Ingress are created and healthy, update this with the real listener ARN.

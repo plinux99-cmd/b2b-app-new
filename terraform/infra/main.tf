@@ -307,15 +307,16 @@ resource "aws_lambda_permission" "api_authorizer_invoke" {
 
 ### Optional: CDN (CloudFront + S3) created in infra when `create_cdn = true`
 module "cdn_static" {
-  count        = var.create_cdn ? 1 : 0
-  source       = "../modules/cdn"
-  bucket_name  = var.cdn_bucket_name != "" ? var.cdn_bucket_name : "${var.project_name}-edge-static-${var.environment}"
-  name_suffix  = var.cdn_name_suffix
-  env          = var.cdn_env
-  alt_domain   = var.cdn_alt_domain
-  acm_cert_arn = var.cdn_acm_cert_arn != "" ? var.cdn_acm_cert_arn : null
-  origin_path  = ""
-  web_acl_id   = var.create_waf_cdn ? module.waf_cdn[0].web_acl_arn : ""
+  count                  = var.create_cdn ? 1 : 0
+  source                 = "../modules/cdn"
+  bucket_name            = var.cdn_bucket_name != "" ? var.cdn_bucket_name : "${var.project_name}-edge-static-${var.environment}"
+  name_suffix            = var.cdn_name_suffix
+  env                    = var.cdn_env
+  alt_domain             = var.cdn_alt_domain
+  acm_cert_arn           = var.cdn_acm_cert_arn != "" ? var.cdn_acm_cert_arn : null
+  origin_path            = ""
+  web_acl_id             = var.create_waf_cdn ? module.waf_cdn[0].web_acl_arn : ""
+  index_html_source_path = var.cdn_index_html_source_path
 
   # Use CDN as a frontend for both static content (S3) and API Gateway.
   # Only the distribution created by this module is affected; the existing
@@ -381,6 +382,7 @@ module "rds_postgres" {
 
   db_instance_class   = "db.t3.medium"
   allocated_storage   = 20
+  storage_type        = "gp2"
   engine_version      = "17.6"
   skip_final_snapshot = var.rds_skip_final_snapshot
 

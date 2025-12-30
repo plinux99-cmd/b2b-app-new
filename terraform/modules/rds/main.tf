@@ -80,8 +80,9 @@ resource "aws_db_instance" "this" {
 
   allocated_storage = var.allocated_storage
   storage_type      = var.storage_type
-  iops              = var.storage_type == "gp3" ? var.iops : null
-  storage_throughput = var.storage_type == "gp3" ? var.storage_throughput : null
+  # IOPS and storage_throughput can only be specified for gp3 with >= 400 GB for PostgreSQL
+  iops              = var.storage_type == "gp3" && var.allocated_storage >= 400 ? var.iops : null
+  storage_throughput = var.storage_type == "gp3" && var.allocated_storage >= 400 ? var.storage_throughput : null
   
   db_name           = var.db_name
   username          = var.db_username

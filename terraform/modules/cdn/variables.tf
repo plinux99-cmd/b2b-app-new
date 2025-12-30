@@ -44,3 +44,10 @@ variable "api_paths" {
   default     = []
 }
 
+variable "index_html_source_path" {
+  type        = string
+  description = "Optional: Local path to index.html file to upload to S3 (e.g., '../edge/static/index.html'). Leave empty to skip automatic upload."
+  default     = ""
+}
+
+
