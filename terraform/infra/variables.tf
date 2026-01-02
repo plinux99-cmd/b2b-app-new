@@ -214,6 +214,12 @@ variable "cdn_index_html_source_path" {
   default     = ""
 }
 
+variable "create_waf_api" {
+  description = "Whether to create a regional WAF for the API Gateway"
+  type        = bool
+  default     = false
+}
+
 variable "create_waf_cdn" {
   description = "Whether to create a CloudFront-scoped WAF in us-east-1 for the CDN"
   type        = bool
