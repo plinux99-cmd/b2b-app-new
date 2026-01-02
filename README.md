@@ -72,7 +72,6 @@ Production-grade infrastructure as code for the AeroWise B2B mobile application 
 │   │       └── index.html
 │   │
 │   └── modules/                  # Reusable Terraform modules
-│       ├── alb/
 │       ├── api-gateway/
 │       ├── cdn/
 │       ├── cloudtrail/
@@ -88,7 +87,6 @@ Production-grade infrastructure as code for the AeroWise B2B mobile application 
 │       ├── network-policy/
 │       ├── rds/
 │       ├── security-hub/
-│       ├── waf_api/
 │       └── waf_cdn/
 │
 ├── kubernetes/                   # Kubernetes manifests
@@ -260,7 +258,6 @@ instance_types = ["t3.small"]
 # Features
 create_cdn = true
 create_waf_cdn = true
-create_waf_api = false
 create_aws_lb_controller_irsa = true
 
 # EKS API Access (restrict in production)

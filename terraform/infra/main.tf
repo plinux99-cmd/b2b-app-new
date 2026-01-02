@@ -336,16 +336,6 @@ module "cdn_static" {
 
 }
 
-### Optional: WAF for API Gateway (regional)
-module "waf_api" {
-  count         = var.create_waf_api ? 1 : 0
-  source        = "../modules/waf_api"
-  name_suffix   = var.waf_api_name_suffix
-  api_stage_arn = module.api_gateway.execution_arn
-
-  depends_on = [module.api_gateway]
-}
-
 ### Optional: WAF for CloudFront (global/us-east-1 provider)
 module "waf_cdn" {
   count       = var.create_waf_cdn && var.create_cdn ? 1 : 0

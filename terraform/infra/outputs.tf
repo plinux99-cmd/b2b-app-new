@@ -44,11 +44,6 @@ output "cdn_domain_name" {
   value       = var.create_cdn ? module.cdn_static[0].cloudfront_domain_name : ""
 }
 
-output "waf_api_arn" {
-  description = "API Gateway WAF ARN (if created)"
-  value       = var.create_waf_api ? module.waf_api[0].web_acl_arn : ""
-}
-
 output "waf_cdn_arn" {
   description = "CloudFront WAF ARN (if created)"
   value       = var.create_waf_cdn && var.create_cdn ? module.waf_cdn[0].web_acl_arn : ""
