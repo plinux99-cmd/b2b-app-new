@@ -84,15 +84,6 @@ Production-grade infrastructure as code for the AeroWise B2B mobile application 
 ├── kubernetes/                   # Kubernetes manifests
 │   ├── internal-app-deployment.yaml
 │   └── internal-app-targetgroupbinding.yaml
-│
-└── docs/                         # Documentation (in root for visibility)
-    ├── AWS_PRICING_BREAKDOWN.md
-    ├── INFRASTRUCTURE_COMPONENT_PRICING.md
-    ├── PRICING_FOR_150_USERS.md
-    ├── RDS_PRICING_VALIDATION.md
-    ├── CUSTOMER_DEPLOYMENT_EMAIL.md
-    ├── SECURITY_AUDIT_REPORT.md
-    └── TERRAFORM_VALIDATION_REPORT.md
 ```
 
 ## 🚀 Quick Start
@@ -186,8 +177,6 @@ terraform destroy -auto-approve
 - Auto-scaling with Spot instances: -$50/month (if workload allows)
 - Regional WAF instead of CloudFront: -$5/month (trade-off: less DDoS protection)
 
-See `PRICING_FOR_150_USERS.md` for detailed capacity analysis and scenarios.
-
 ## 🔒 Security Features
 
 ✅ **Encryption**
@@ -210,8 +199,6 @@ See `PRICING_FOR_150_USERS.md` for detailed capacity analysis and scenarios.
 - RDS: Deletion protection enabled
 - CloudTrail: S3 bucket MFA delete (optional)
 
-See `SECURITY_AUDIT_REPORT.md` for detailed security posture.
-
 ## 📈 Scaling
 
 **Current Configuration: 150 users**
@@ -224,8 +211,6 @@ See `SECURITY_AUDIT_REPORT.md` for detailed security posture.
 | 150 | t3.small | 2× t3.small | $644 |
 | 250-300 | t3.medium | 3× t3.small | $800 |
 | 400-500 | t3.large | 4× t3.medium | $1,200 |
-
-See `PRICING_FOR_150_USERS.md` for capacity verification and growth scenarios.
 
 ## 🔧 Configuration
 
@@ -269,20 +254,6 @@ allocated_storage   = 30                 # GB
 storage_type        = "gp2"              # General Purpose SSD
 engine_version      = "17.6"             # PostgreSQL version
 ```
-
-## 📚 Documentation
-
-| Document | Purpose |
-|----------|---------|
-| **TERRAFORM_VALIDATION_REPORT.md** | Infrastructure validation (112 resources, security checks) |
-| **SECURITY_AUDIT_REPORT.md** | Security posture, encryption, isolation, compliance |
-| **PRICING_FOR_150_USERS.md** | Cost breakdown and capacity analysis for 150 users |
-| **INFRASTRUCTURE_COMPONENT_PRICING.md** | Detailed per-component pricing (36 services) |
-| **AWS_PRICING_BREAKDOWN.md** | Comprehensive service-by-service pricing |
-| **RDS_PRICING_VALIDATION.md** | RDS cost validation (db.t3.small: $293/month) |
-| **CUSTOMER_DEPLOYMENT_EMAIL.md** | Pre-deployment checklist and action items |
-
-See `terraform/infra/scripts/` for deployment and verification guides.
 
 ## 🆘 Troubleshooting
 
