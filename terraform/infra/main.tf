@@ -374,7 +374,7 @@ module "rds_postgres" {
   db_password = var.db_password
 
   db_instance_class   = "db.t3.medium"
-  allocated_storage   = 50  # 50 GB for 2-3 years growth headroom
+  allocated_storage   = 50 # 50 GB for 2-3 years growth headroom
   storage_type        = "gp3"
   engine_version      = "17.6"
   skip_final_snapshot = var.rds_skip_final_snapshot
@@ -429,7 +429,7 @@ module "security_hub" {
   source = "../modules/security-hub"
 
   project_name         = var.project_name
-  aws_region           = var.aws_region  # Use variable instead of hardcoded region
+  aws_region           = var.aws_region # Use variable instead of hardcoded region
   environment          = "prod"
   auto_enable_controls = true
 
@@ -499,34 +499,34 @@ module "nat_egress_control" {
 
 # NiFi EC2 Instance Module
 module "nifi_ec2" {
-  count            = var.create_nifi_ec2 ? 1 : 0
-  source           = "../modules/nifi-ec2"
-  project_name     = var.project_name
-  instance_type    = var.nifi_instance_type
-  storage_size     = var.nifi_storage_size
-  ebs_volume_type  = var.nifi_ebs_volume_type
-  ebs_device_name  = var.nifi_ebs_device_name
-  nifi_version     = var.nifi_version
-  
-  vpc_id                  = module.network.vpc_id
-  subnet_id               = module.network.private_app_subnet_ids[0]
-  availability_zone       = data.aws_availability_zones.available.names[0]
-  alb_security_group_id   = module.network.vpc_link_sg_id
-  ssh_allowed_cidr        = var.nifi_ssh_allowed_cidr
-  associate_public_ip     = var.nifi_associate_public_ip
-  ebs_encryption_enabled  = var.nifi_ebs_encryption_enabled
-  kms_key_id              = module.kms_cmk.key_arn
+  count           = var.create_nifi_ec2 ? 1 : 0
+  source          = "../modules/nifi-ec2"
+  project_name    = var.project_name
+  instance_type   = var.nifi_instance_type
+  storage_size    = var.nifi_storage_size
+  ebs_volume_type = var.nifi_ebs_volume_type
+  ebs_device_name = var.nifi_ebs_device_name
+  nifi_version    = var.nifi_version
+
+  vpc_id                   = module.network.vpc_id
+  subnet_id                = module.network.private_app_subnet_ids[0]
+  availability_zone        = data.aws_availability_zones.available.names[0]
+  alb_security_group_id    = module.network.vpc_link_sg_id
+  ssh_allowed_cidr         = var.nifi_ssh_allowed_cidr
+  associate_public_ip      = var.nifi_associate_public_ip
+  ebs_encryption_enabled   = var.nifi_ebs_encryption_enabled
+  kms_key_id               = module.kms_cmk.key_arn
   snapshot_retention_count = var.nifi_snapshot_retention_count
-  alarm_actions           = var.cloudwatch_alarm_actions
-  
+  alarm_actions            = var.cloudwatch_alarm_actions
+
   # Keycloak OIDC Authentication
-  enable_keycloak_auth    = var.nifi_enable_keycloak_auth
-  keycloak_url            = var.nifi_keycloak_url
-  keycloak_realm          = var.nifi_keycloak_realm
-  keycloak_client_id      = var.nifi_keycloak_client_id
-  keycloak_client_secret  = var.nifi_keycloak_client_secret
-  nifi_admin_identity     = var.nifi_admin_identity
-  
+  enable_keycloak_auth   = var.nifi_enable_keycloak_auth
+  keycloak_url           = var.nifi_keycloak_url
+  keycloak_realm         = var.nifi_keycloak_realm
+  keycloak_client_id     = var.nifi_keycloak_client_id
+  keycloak_client_secret = var.nifi_keycloak_client_secret
+  nifi_admin_identity    = var.nifi_admin_identity
+
   tags = {
     Environment = var.environment
     Project     = var.project_name
