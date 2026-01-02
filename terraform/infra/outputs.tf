@@ -80,3 +80,44 @@ output "api_execution_arn" {
   description = "API Gateway execution ARN (stage)"
   value       = module.api_gateway.execution_arn
 }
+
+# NiFi EC2 Outputs
+output "nifi_instance_id" {
+  description = "NiFi EC2 instance ID"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].instance_id : ""
+}
+
+output "nifi_instance_private_ip" {
+  description = "NiFi EC2 private IP address"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].instance_private_ip : ""
+}
+
+output "nifi_instance_public_ip" {
+  description = "NiFi EC2 public IP address (if enabled)"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].instance_public_ip : ""
+}
+
+output "nifi_ebs_volume_id" {
+  description = "NiFi data EBS volume ID"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].ebs_volume_id : ""
+}
+
+output "nifi_security_group_id" {
+  description = "NiFi security group ID"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].security_group_id : ""
+}
+
+output "nifi_web_ui_url" {
+  description = "NiFi Web UI URL (HTTP)"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].nifi_web_ui_url : ""
+}
+
+output "nifi_secure_web_ui_url" {
+  description = "NiFi Secure Web UI URL (HTTPS)"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].nifi_secure_web_ui_url : ""
+}
+
+output "nifi_dlm_policy_id" {
+  description = "NiFi Data Lifecycle Manager snapshot policy ID"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].dlm_policy_id : ""
+}

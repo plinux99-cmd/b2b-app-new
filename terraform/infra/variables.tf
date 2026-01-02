@@ -314,3 +314,70 @@ variable "network_policy_mobile_helm_disable_hooks" {
   type        = bool
   default     = false
 }
+
+# NiFi EC2 Instance Variables
+variable "create_nifi_ec2" {
+  description = "Create NiFi EC2 instance"
+  type        = bool
+  default     = true
+}
+
+variable "nifi_instance_type" {
+  description = "EC2 instance type for NiFi"
+  type        = string
+  default     = "m5.2xlarge"
+}
+
+variable "nifi_storage_size" {
+  description = "Size of NiFi EBS volume in GB"
+  type        = number
+  default     = 128
+}
+
+variable "nifi_ebs_volume_type" {
+  description = "EBS volume type for NiFi (gp3, gp2, io1, io2)"
+  type        = string
+  default     = "gp3"
+}
+
+variable "nifi_ebs_device_name" {
+  description = "Device name for NiFi EBS volume"
+  type        = string
+  default     = "/dev/sdf"
+}
+
+variable "nifi_version" {
+  description = "Apache NiFi version to install"
+  type        = string
+  default     = "1.25.0"
+}
+
+variable "nifi_ssh_allowed_cidr" {
+  description = "CIDR blocks allowed for SSH access to NiFi instance"
+  type        = list(string)
+  default     = ["10.0.0.0/16"] # Restrict to VPC by default; override with your IP
+}
+
+variable "nifi_associate_public_ip" {
+  description = "Associate public IP with NiFi instance"
+  type        = bool
+  default     = false
+}
+
+variable "nifi_ebs_encryption_enabled" {
+  description = "Enable EBS encryption for NiFi volumes"
+  type        = bool
+  default     = true
+}
+
+variable "nifi_snapshot_retention_count" {
+  description = "Number of EBS snapshots to retain for NiFi data volume"
+  type        = number
+  default     = 14
+}
+
+variable "cloudwatch_alarm_actions" {
+  description = "SNS topic ARNs for CloudWatch alarm notifications"
+  type        = list(string)
+  default     = []
+}

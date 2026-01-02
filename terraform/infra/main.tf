@@ -497,6 +497,42 @@ module "nat_egress_control" {
   depends_on       = [module.network]
 }
 
+# NiFi EC2 Instance Module
+module "nifi_ec2" {
+  count            = var.create_nifi_ec2 ? 1 : 0
+  source           = "../modules/nifi-ec2"
+  project_name     = var.project_name
+  instance_type    = var.nifi_instance_type
+  storage_size     = var.nifi_storage_size
+  ebs_volume_type  = var.nifi_ebs_volume_type
+  ebs_device_name  = var.nifi_ebs_device_name
+  nifi_version     = var.nifi_version
+  
+  vpc_id                  = module.network.vpc_id
+  subnet_id               = module.network.private_app_subnet_ids[0]
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  alb_security_group_id   = module.network.vpc_link_sg_id
+  ssh_allowed_cidr        = var.nifi_ssh_allowed_cidr
+  associate_public_ip     = var.nifi_associate_public_ip
+  ebs_encryption_enabled  = var.nifi_ebs_encryption_enabled
+  kms_key_id              = module.kms_cmk.key_arn
+  snapshot_retention_count = var.nifi_snapshot_retention_count
+  alarm_actions           = var.cloudwatch_alarm_actions
+  
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    Component   = "NiFi"
+  }
+
+  depends_on = [module.network, module.eks]
+}
+
+# Data source to get availability zones
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 
 
 

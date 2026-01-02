@@ -54,3 +54,14 @@ eks_public_access_cidrs    = ["0.0.0.0/0"] # ⚠️ WARNING: Open to all IPs - R
 # OPTION 3 (Best for remote teams): Restrict to specific IPs/CIDR ranges
 # eks_endpoint_public_access = true
 # eks_public_access_cidrs    = ["YOUR_OFFICE_IP/32", "YOUR_VPN_IP/32"]
+
+# NiFi EC2 Instance Configuration
+create_nifi_ec2               = true
+nifi_instance_type            = "m5.2xlarge"
+nifi_storage_size             = 128
+nifi_ebs_volume_type          = "gp3"
+nifi_version                  = "1.25.0"
+nifi_ssh_allowed_cidr         = ["10.0.0.0/16"] # Restrict to VPC; update for SSH access
+nifi_associate_public_ip      = false            # Set to true if you need direct public access
+nifi_ebs_encryption_enabled   = true
+nifi_snapshot_retention_count = 14               # Keep 2 weeks of daily snapshots
