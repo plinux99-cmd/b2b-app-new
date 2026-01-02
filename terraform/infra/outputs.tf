@@ -98,8 +98,8 @@ output "nifi_instance_public_ip" {
 }
 
 output "nifi_ebs_volume_id" {
-  description = "NiFi data EBS volume ID"
-  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].ebs_volume_id : ""
+  description = "NiFi root volume ID (128GB gp3)"
+  value       = var.create_nifi_ec2 ? module.nifi_ec2[0].root_volume_id : ""
 }
 
 output "nifi_security_group_id" {
