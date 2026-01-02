@@ -32,7 +32,7 @@ alb_listener_arn = ""
 # Ingress ALB autodiscovery - MUST be false on first apply (cluster doesn't exist yet)
 # Set to true AFTER: (1) terraform apply completes, (2) kubectl apply -f kubernetes/internal-app-*.yaml runs
 # Then run: terraform plan/apply again to auto-discover the mobileapp-alb Ingress
-enable_ingress_autodiscovery = false
+enable_ingress_autodiscovery = true
 
 # Enable optional authorizer (set to true if Lambda authorizer exists)
 create_authorizer     = true
