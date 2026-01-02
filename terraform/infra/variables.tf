@@ -346,12 +346,6 @@ variable "nifi_ebs_volume_type" {
   default     = "gp3"
 }
 
-variable "nifi_ebs_device_name" {
-  description = "Device name for NiFi EBS volume"
-  type        = string
-  default     = "/dev/sdf"
-}
-
 variable "nifi_version" {
   description = "Apache NiFi version to install"
   type        = string

@@ -505,7 +505,6 @@ module "nifi_ec2" {
   instance_type   = var.nifi_instance_type
   storage_size    = var.nifi_storage_size
   ebs_volume_type = var.nifi_ebs_volume_type
-  ebs_device_name = var.nifi_ebs_device_name
   nifi_version    = var.nifi_version
 
   vpc_id                   = module.network.vpc_id

@@ -2,10 +2,9 @@
 set -e
 
 # NiFi Setup Script for Amazon Linux 2
-# Installs and configures Apache NiFi
+# Installs and configures Apache NiFi on root volume (128GB)
 
 NIFI_VERSION="${NIFI_VERSION}"
-DEVICE_NAME="${DEVICE_NAME}"
 PROJECT_NAME="${PROJECT_NAME}"
 
 # Keycloak OIDC Configuration
@@ -24,38 +23,17 @@ yum install -y java-11-openjdk java-11-openjdk-devel wget tar gzip
 echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk' >> /etc/profile.d/java.sh
 source /etc/profile.d/java.sh
 
-# Format and mount EBS volume
-if [ -b "$DEVICE_NAME" ]; then
-  # Wait for volume to be available
-  sleep 5
-  
-  # Check if volume is already formatted
-  if ! sudo blkid "$DEVICE_NAME"; then
-    echo "Formatting $DEVICE_NAME..."
-    sudo mkfs -t ext4 "$DEVICE_NAME"
-  fi
-  
-  # Create mount point
-  sudo mkdir -p /nifi_data
-  
-  # Mount the volume
-  sudo mount "$DEVICE_NAME" /nifi_data
-  
-  # Add to fstab for persistent mounting
-  DEVICE_UUID=$(sudo blkid -s UUID -o value "$DEVICE_NAME")
-  echo "UUID=$DEVICE_UUID /nifi_data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
-  
-  # Set permissions
-  sudo chown -R 1000:1000 /nifi_data
-  sudo chmod 755 /nifi_data
-fi
-
 # Create nifi user
 useradd -m -u 1000 nifi || true
 
 # Create installation directory
 sudo mkdir -p /opt/nifi
 sudo chown nifi:nifi /opt/nifi
+
+# Create data directory on root volume
+sudo mkdir -p /var/nifi/data
+sudo chown -R nifi:nifi /var/nifi
+sudo chmod 755 /var/nifi
 
 # Download and install NiFi
 cd /tmp
@@ -72,12 +50,12 @@ sudo chown -R nifi:nifi /opt/nifi/current
 NIFI_HOME="/opt/nifi/current"
 NIFI_CONF="$NIFI_HOME/conf/nifi.properties"
 
-# Set data directories to use the mounted volume
-sudo sed -i "s|nifi.flow.configuration.file=.*|nifi.flow.configuration.file=/nifi_data/flow.xml.gz|g" "$NIFI_CONF"
-sudo sed -i "s|nifi.flow.configuration.archive.dir=.*|nifi.flow.configuration.archive.dir=/nifi_data/archive|g" "$NIFI_CONF"
-sudo sed -i "s|nifi.database.repository.directory=.*|nifi.database.repository.directory=/nifi_data/database_repository|g" "$NIFI_CONF"
-sudo sed -i "s|nifi.flowfile.repository.directory=.*|nifi.flowfile.repository.directory=/nifi_data/flowfile_repository|g" "$NIFI_CONF"
-sudo sed -i "s|nifi.content.repository.directory.default=.*|nifi.content.repository.directory.default=/nifi_data/content_repository|g" "$NIFI_CONF"
+# Set data directories to use root volume
+sudo sed -i "s|nifi.flow.configuration.file=.*|nifi.flow.configuration.file=/var/nifi/data/flow.xml.gz|g" "$NIFI_CONF"
+sudo sed -i "s|nifi.flow.configuration.archive.dir=.*|nifi.flow.configuration.archive.dir=/var/nifi/data/archive|g" "$NIFI_CONF"
+sudo sed -i "s|nifi.database.repository.directory=.*|nifi.database.repository.directory=/var/nifi/data/database_repository|g" "$NIFI_CONF"
+sudo sed -i "s|nifi.flowfile.repository.directory=.*|nifi.flowfile.repository.directory=/var/nifi/data/flowfile_repository|g" "$NIFI_CONF"
+sudo sed -i "s|nifi.content.repository.directory.default=.*|nifi.content.repository.directory.default=/var/nifi/data/content_repository|g" "$NIFI_CONF"
 sudo sed -i "s|nifi.provenance.repository.directory.default=.*|nifi.provenance.repository.directory.default=/nifi_data/provenance_repository|g" "$NIFI_CONF"
 sudo sed -i "s|nifi.state.management.configuration.file=.*|nifi.state.management.configuration.file=$NIFI_HOME/conf/state-management.xml|g" "$NIFI_CONF"
 

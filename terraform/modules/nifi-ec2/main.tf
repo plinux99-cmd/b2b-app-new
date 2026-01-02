@@ -149,22 +149,6 @@ resource "aws_iam_instance_profile" "nifi" {
   role        = aws_iam_role.nifi.name
 }
 
-# EBS Volume (128 GB)
-resource "aws_ebs_volume" "nifi_data" {
-  availability_zone = var.availability_zone
-  size              = var.storage_size
-  type              = var.ebs_volume_type
-  encrypted         = var.ebs_encryption_enabled
-  kms_key_id        = var.kms_key_id
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-nifi-data-volume"
-    }
-  )
-}
-
 # EC2 Instance for NiFi
 resource "aws_instance" "nifi" {
   ami                    = data.aws_ami.amazon_linux_2.id
@@ -172,11 +156,11 @@ resource "aws_instance" "nifi" {
   iam_instance_profile   = aws_iam_instance_profile.nifi.name
   vpc_security_group_ids = [aws_security_group.nifi.id]
   subnet_id              = var.subnet_id
-  
-  # Root volume
+
+  # Root volume - use 128GB for all NiFi data
   root_block_device {
-    volume_size           = 50
-    volume_type           = "gp3"
+    volume_size           = var.storage_size
+    volume_type           = var.ebs_volume_type
     delete_on_termination = true
     encrypted             = var.ebs_encryption_enabled
     kms_key_id            = var.kms_key_id
@@ -186,7 +170,7 @@ resource "aws_instance" "nifi" {
     }
   }
 
-  monitoring              = true
+  monitoring = true
   associate_public_ip_address = var.associate_public_ip
 
   user_data_base64 = base64encode(templatefile("${path.module}/user_data.sh", {
@@ -209,16 +193,6 @@ resource "aws_instance" "nifi" {
   )
 
   depends_on = [aws_iam_instance_profile.nifi]
-}
-
-# Attach the EBS volume
-resource "aws_volume_attachment" "nifi_data" {
-  device_name             = var.ebs_device_name
-  volume_id               = aws_ebs_volume.nifi_data.id
-  instance_id             = aws_instance.nifi.id
-  force_detach            = false
-  skip_destroy            = false
-  stop_instance_before_detaching = true
 }
 
 # Data Lifecycle Manager for automatic snapshots
@@ -278,9 +252,9 @@ resource "aws_iam_role_policy_attachment" "dlm_default" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
 }
 
-# Tag the volume for snapshot policy
+# Tag the root volume for automatic snapshots
 resource "aws_ec2_tag" "nifi_volume_snapshot_tag" {
-  resource_id = aws_ebs_volume.nifi_data.id
+  resource_id = aws_instance.nifi.root_block_device[0].volume_id
   key         = "SnapshotEnabled"
   value       = "true"
 }

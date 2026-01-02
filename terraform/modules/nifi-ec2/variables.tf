@@ -21,12 +21,6 @@ variable "ebs_volume_type" {
   default     = "gp3"
 }
 
-variable "ebs_device_name" {
-  description = "Device name for the EBS volume"
-  type        = string
-  default     = "/dev/sdf"
-}
-
 variable "ebs_encryption_enabled" {
   description = "Enable EBS encryption"
   type        = bool
