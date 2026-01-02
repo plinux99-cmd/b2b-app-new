@@ -42,11 +42,51 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 
 data "aws_caller_identity" "current" {}
 
+# SECURITY: S3 bucket for CloudFront access logs
+resource "aws_s3_bucket" "cloudfront_logs" {
+  bucket        = "${var.bucket_name}-logs"
+  force_destroy = true
+
+  tags = {
+    Name = "cloudfront-logs-${var.name_suffix}"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "cloudfront_logs" {
+  depends_on = [aws_s3_bucket_ownership_controls.cloudfront_logs]
+  bucket     = aws_s3_bucket.cloudfront_logs.id
+  acl        = "private"
+}
+
+resource "aws_s3_bucket_public_access_block" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   comment             = "frontend-${var.name_suffix}"
   default_root_object = "index.html"
   web_acl_id          = var.web_acl_id
+
+  # SECURITY: Enable access logging
+  logging_config {
+    bucket          = aws_s3_bucket.cloudfront_logs.bucket_domain_name
+    include_cookies = false
+    prefix          = "cloudfront/"
+  }
 
   origin {
     domain_name              = aws_s3_bucket.static_site.bucket_regional_domain_name

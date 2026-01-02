@@ -41,7 +41,8 @@ resource "aws_eks_cluster" "this" {
   vpc_config {
     subnet_ids              = var.private_subnets
     endpoint_private_access = true
-    endpoint_public_access  = true
+    endpoint_public_access  = var.endpoint_public_access
+    public_access_cidrs     = var.public_access_cidrs
   }
 
   enabled_cluster_log_types = [
@@ -77,15 +78,25 @@ resource "aws_security_group" "nodes" {
   description = "EKS worker nodes"
   vpc_id      = var.vpc_id
 
+  # SECURITY: Restrict egress to VPC CIDR and specific AWS service endpoints
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "HTTPS to VPC endpoints"
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    self        = true
+    description = "Node to node communication (all protocols)"
   }
 
   tags = {
-    Name        = "${var.cluster_name}-nodes-sg"
+    Name        = "${var.cluster_name}-node-sg"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -168,6 +179,28 @@ resource "aws_iam_role_policy_attachment" "nodes_ssm" {
 ############################
 # NODE GROUP (FIXED)
 ############################
+# SECURITY: Launch template for IMDSv2 enforcement
+resource "aws_launch_template" "nodes" {
+  name_prefix = "${var.cluster_name}-${var.nodegroup_name}-"
+  description = "Launch template for ${var.cluster_name} node group with IMDSv2"
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"  # IMDSv2 only
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "disabled"
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name        = "${var.cluster_name}-${var.nodegroup_name}-node"
+      Environment = var.environment
+      Project     = var.project_name
+    }
+  }
+}
+
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = var.nodegroup_name

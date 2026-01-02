@@ -1,45 +1,22 @@
 apiVersion: v1
-kind: ConfigMap
+kind: Service
 metadata:
-  name: internal-app-config
+  name: internal-app
   namespace: mobileapp
-data:
-  nginx.conf: |
-    events {}
-    http {
-      server {
-        listen 80;
-        root /usr/share/nginx/html;
-
-        location = / {
-          try_files /index.html =404;
-        }
-
-        location = /app-version/check {
-          default_type application/json;
-          return 200 '{"service":"internal-app","version":"1.0.0","status":"ok"}';
-        }
-      }
-    }
-
-  index.html: |
-    <!DOCTYPE html>
-    <html>
-    <head><title>Pramod and Mukesh</title></head>
-    <body>
-      <h1>Internal App Root</h1>
-      <p>/app-version/check returns JSON.</p>
-    </body>
-    </html>
-
+spec:
+  type: ClusterIP
+  selector:
+    app: internal-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: internal-app
   namespace: mobileapp
-  labels:
-    app: internal-app
 spec:
   replicas: 2
   selector:
@@ -51,75 +28,33 @@ spec:
         app: internal-app
     spec:
       containers:
-        - name: internal-app
-          image: nginx:1.25-alpine
+        - name: app
+          image: public.ecr.aws/docker/library/nginx:alpine
           ports:
             - containerPort: 80
-          volumeMounts:
-            - name: nginx-conf
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
-            - name: html
-              mountPath: /usr/share/nginx/html/index.html
-              subPath: index.html
-      volumes:
-        - name: nginx-conf
-          configMap:
-            name: internal-app-config
-            items:
-              - key: nginx.conf
-                path: nginx.conf
-        - name: html
-          configMap:
-            name: internal-app-config
-            items:
-              - key: index.html
-                path: index.html
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: internal-app-svc
-  namespace: mobileapp
-  labels:
-    app: internal-app
-spec:
-  selector:
-    app: internal-app
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
-  type: ClusterIP
-
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: internal-app-ingress
+  name: mobileapp-alb
   namespace: mobileapp
   annotations:
-    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/load-balancer-name: mobileapp-alb
     alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/load-balancer-name: k8s-mobileap-internal-63a6eb7efe
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-port: "80"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
 spec:
   ingressClassName: alb
   rules:
     - http:
         paths:
-          - path: /app-version/check
-            pathType: Prefix
-            backend:
-              service:
-                name: internal-app-svc
-                port:
-                  number: 80
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: internal-app-svc
+                name: internal-app
                 port:
                   number: 80

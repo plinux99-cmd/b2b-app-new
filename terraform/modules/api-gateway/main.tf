@@ -72,7 +72,7 @@ resource "aws_apigatewayv2_authorizer" "lambda" {
   identity_sources                 = var.authorizer_identity_sources
   authorizer_payload_format_version = var.authorizer_payload_version
   authorizer_result_ttl_in_seconds = var.authorizer_result_ttl_in_seconds
-  enable_simple_responses          = false
+  enable_simple_responses          = true
 }
 
 data "aws_caller_identity" "current" {}

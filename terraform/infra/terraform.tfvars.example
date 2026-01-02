@@ -1,0 +1,43 @@
+# AeroWise Terraform Configuration Template
+# Copy this file to terraform.tfvars and fill in your values
+# NEVER commit terraform.tfvars with real credentials to version control
+
+project_name = "aerowise-t1"
+environment  = "prod"
+aws_region   = "us-east-1"
+
+# DATABASE CREDENTIALS
+# SECURITY: Set these via environment variables or pass during apply
+# export TF_VAR_db_username="your-username"
+# export TF_VAR_db_password="your-secure-password"
+db_username  = "postgres"
+# db_password = ""  # DO NOT SET HERE - Use environment variable
+
+# EKS Configuration
+desired_size = 2
+min_size     = 1
+max_size     = 4
+
+# NAT Gateway Configuration
+retain_nat_eips     = true
+create_nat_gateways = true
+
+# CDN and WAF
+create_waf_api = false
+create_cdn     = true
+create_waf_cdn = true
+cdn_index_html_source_path = "static/index.html"
+
+# API Gateway Configuration
+alb_listener_arn = ""
+create_authorizer     = true
+authorizer_lambda_arn = ""
+enable_ingress_autodiscovery = true
+
+# Database Configuration  
+rds_skip_final_snapshot = false  # Set true only for dev/test
+
+# SECURITY: EKS API Endpoint Access Control
+# For production, set endpoint_public_access=false or restrict public_access_cidrs to your office IP
+eks_endpoint_public_access = true
+eks_public_access_cidrs    = ["0.0.0.0/0"]  # TODO: Restrict to ["YOUR_OFFICE_IP/32"]

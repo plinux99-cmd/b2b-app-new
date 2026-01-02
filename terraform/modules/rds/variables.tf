@@ -89,3 +89,9 @@ variable "eks_node_sg_id" {
   description = "Security group ID of EKS worker nodes"
   type        = string
 }
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block for security group egress rules"
+  type        = string
+  default     = "10.0.0.0/16"
+}

@@ -37,9 +37,12 @@ module "eks" {
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
 
-  vpc_id          = module.network.vpc_id
-  private_subnets = module.network.private_subnets
-  public_subnets  = module.network.public_subnets
+  vpc_id                 = module.network.vpc_id
+  vpc_cidr               = "10.0.0.0/16"
+  private_subnets        = module.network.private_subnets
+  public_subnets         = module.network.public_subnets
+  endpoint_public_access = var.eks_endpoint_public_access
+  public_access_cidrs    = var.eks_public_access_cidrs
 
   nodegroup_name   = var.nodegroup_name
   desired_size     = var.desired_size
@@ -382,11 +385,12 @@ module "rds_postgres" {
 
   db_instance_class   = "db.t3.medium"
   allocated_storage   = 20
-  storage_type        = "gp2"
+  storage_type        = "gp3"
   engine_version      = "17.6"
   skip_final_snapshot = var.rds_skip_final_snapshot
 
   vpc_id             = module.network.vpc_id
+  vpc_cidr           = "10.0.0.0/16"
   private_subnet_ids = module.network.private_app_subnet_ids
 
   eks_node_sg_id = module.eks.node_security_group_id
@@ -406,6 +410,7 @@ module "cloudtrail" {
   source             = "../modules/cloudtrail"
   project_name       = var.project_name
   aws_region         = var.aws_region
+  kms_key_arn        = module.kms_cmk.key_arn
   log_retention_days = 365
   tags = {
     Environment = "prod"
@@ -485,6 +490,7 @@ module "kms_cmk" {
   source       = "../modules/kms-cmk"
   project_name = var.project_name
   environment  = var.environment
+  aws_region   = var.aws_region
   #  eks_cluster_role_arn = module.eks_cluster_role_arn
   depends_on = [module.eks]
 }

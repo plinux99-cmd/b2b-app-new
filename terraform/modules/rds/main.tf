@@ -49,11 +49,13 @@ resource "aws_security_group" "postgres" {
     description     = "Allow PostgreSQL access from EKS worker nodes"
   }
 
+  # SECURITY: Restrict egress to VPC CIDR only (no internet access needed)
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "Allow HTTPS to VPC for AWS service endpoints"
   }
 
   tags = var.tags
@@ -96,7 +98,8 @@ resource "aws_db_instance" "this" {
   storage_encrypted            = true
   multi_az                     = true
 
-  deletion_protection       = false                                         #temp
+  # SECURITY: Deletion protection enabled for production safety
+  deletion_protection       = true
   skip_final_snapshot       = var.skip_final_snapshot
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.project_name}-postgres-final-snapshot"
   lifecycle {

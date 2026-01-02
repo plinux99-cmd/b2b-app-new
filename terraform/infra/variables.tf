@@ -103,6 +103,18 @@ variable "rds_skip_final_snapshot" {
   default     = false
 }
 
+variable "eks_endpoint_public_access" {
+  description = "Enable EKS public API endpoint access"
+  type        = bool
+  default     = true
+}
+
+variable "eks_public_access_cidrs" {
+  description = "CIDR blocks allowed to access EKS public endpoint. Restrict to your office/VPN IP for security"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "create_ecr_public_endpoint" {
   description = "Whether to create the ECR public interface VPC endpoint (region-dependent)"
   type        = bool
@@ -249,7 +261,7 @@ variable "authorizer_name" {
 variable "authorizer_identity_sources" {
   description = "Identity sources for authorizer"
   type        = list(string)
-  default     = ["$request.header.Authorization"]
+  default     = ["$request.header.authorization"]
 }
 
 variable "authorizer_payload_version" {
