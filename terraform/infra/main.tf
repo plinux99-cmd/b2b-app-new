@@ -519,6 +519,14 @@ module "nifi_ec2" {
   snapshot_retention_count = var.nifi_snapshot_retention_count
   alarm_actions           = var.cloudwatch_alarm_actions
   
+  # Keycloak OIDC Authentication
+  enable_keycloak_auth    = var.nifi_enable_keycloak_auth
+  keycloak_url            = var.nifi_keycloak_url
+  keycloak_realm          = var.nifi_keycloak_realm
+  keycloak_client_id      = var.nifi_keycloak_client_id
+  keycloak_client_secret  = var.nifi_keycloak_client_secret
+  nifi_admin_identity     = var.nifi_admin_identity
+  
   tags = {
     Environment = var.environment
     Project     = var.project_name

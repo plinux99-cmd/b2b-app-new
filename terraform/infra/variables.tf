@@ -381,3 +381,41 @@ variable "cloudwatch_alarm_actions" {
   type        = list(string)
   default     = []
 }
+
+# NiFi Keycloak OIDC Authentication Variables
+variable "nifi_enable_keycloak_auth" {
+  description = "Enable Keycloak OIDC authentication for NiFi"
+  type        = bool
+  default     = false
+}
+
+variable "nifi_keycloak_url" {
+  description = "Keycloak server URL (e.g., https://kc2.aerowiseplatform.com)"
+  type        = string
+  default     = ""
+}
+
+variable "nifi_keycloak_realm" {
+  description = "Keycloak realm name for NiFi"
+  type        = string
+  default     = "aerowise"
+}
+
+variable "nifi_keycloak_client_id" {
+  description = "Keycloak client ID for NiFi"
+  type        = string
+  default     = "nifi-client"
+}
+
+variable "nifi_keycloak_client_secret" {
+  description = "Keycloak client secret for NiFi (sensitive)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "nifi_admin_identity" {
+  description = "Initial NiFi admin user identity from Keycloak (email or username)"
+  type        = string
+  default     = "admin@aerowiseplatform.com"
+}

@@ -190,9 +190,15 @@ resource "aws_instance" "nifi" {
   associate_public_ip_address = var.associate_public_ip
 
   user_data_base64 = base64encode(templatefile("${path.module}/user_data.sh", {
-    PROJECT_NAME = var.project_name
-    NIFI_VERSION = var.nifi_version
-    DEVICE_NAME  = var.ebs_device_name
+    PROJECT_NAME            = var.project_name
+    NIFI_VERSION            = var.nifi_version
+    DEVICE_NAME             = var.ebs_device_name
+    ENABLE_KEYCLOAK         = var.enable_keycloak_auth ? "true" : "false"
+    KEYCLOAK_URL            = var.keycloak_url
+    KEYCLOAK_REALM          = var.keycloak_realm
+    KEYCLOAK_CLIENT_ID      = var.keycloak_client_id
+    KEYCLOAK_CLIENT_SECRET  = var.keycloak_client_secret
+    NIFI_ADMIN_IDENTITY     = var.nifi_admin_identity
   }))
 
   tags = merge(

@@ -65,3 +65,11 @@ nifi_ssh_allowed_cidr         = ["10.0.0.0/16"] # Restrict to VPC; update for SS
 nifi_associate_public_ip      = false            # Set to true if you need direct public access
 nifi_ebs_encryption_enabled   = true
 nifi_snapshot_retention_count = 14               # Keep 2 weeks of daily snapshots
+
+# NiFi Keycloak OIDC Authentication (Optional - enable for SSO)
+nifi_enable_keycloak_auth     = false            # Set to true to enable Keycloak authentication
+nifi_keycloak_url             = "https://kc2.aerowiseplatform.com"
+nifi_keycloak_realm           = "aerowise"
+nifi_keycloak_client_id       = "nifi-client"
+# nifi_keycloak_client_secret = "..."            # Set via environment variable: TF_VAR_nifi_keycloak_client_secret
+nifi_admin_identity           = "admin@aerowiseplatform.com"
