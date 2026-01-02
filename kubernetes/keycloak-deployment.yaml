@@ -1,0 +1,308 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mobileapp
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-admin-secret
+  namespace: mobileapp
+type: Opaque
+stringData:
+  KEYCLOAK_ADMIN: admin
+  KEYCLOAK_ADMIN_PASSWORD: "ChangeThisAdminPassword123!"  # Change this!
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-db-secret
+  namespace: mobileapp
+type: Opaque
+stringData:
+  # These values will come from Terraform outputs
+  # Get RDS endpoint: terraform output -raw rds_endpoint
+  # Get DB password: from your terraform.tfvars or environment variable
+  KC_DB_USERNAME: postgres
+  KC_DB_PASSWORD: "YOUR_DB_PASSWORD_HERE"  # Replace with actual RDS password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: mobileapp
+data:
+  # RDS endpoint will be injected from Terraform
+  # Format: <project-name>-postgres.<region>.rds.amazonaws.com
+  KC_DB_URL_HOST: "aerowise-t1-postgres.us-east-1.rds.amazonaws.com"  # Update from terraform output
+  KC_DB_URL_DATABASE: "keycloak"
+  KC_DB_URL_PORT: "5432"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: mobileapp
+  labels:
+    app: keycloak
+    version: v26.4.2
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+        version: v26.4.2
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: keycloak-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: keycloak
+          image: 339712886638.dkr.ecr.ap-south-1.amazonaws.com/aerowise-dev-repo/keycloak:26.4.2
+          imagePullPolicy: IfNotPresent
+          args:
+            - start
+            - --optimized
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "3Gi"
+              cpu: "2000m"
+          env:
+            # --- Admin credentials ---
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-secret
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-secret
+                  key: KEYCLOAK_ADMIN_PASSWORD
+
+            # --- Database configuration (RDS PostgreSQL from Terraform) ---
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-config
+                  key: KC_DB_URL_HOST
+            - name: KC_DB_URL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-config
+                  key: KC_DB_URL_DATABASE
+            - name: KC_DB_URL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-config
+                  key: KC_DB_URL_PORT
+            # Construct full JDBC URL
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://$(KC_DB_URL_HOST):$(KC_DB_URL_PORT)/$(KC_DB_URL_DATABASE)?ssl=true&sslmode=require"
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db-secret
+                  key: KC_DB_USERNAME
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db-secret
+                  key: KC_DB_PASSWORD
+
+            # --- Database connection pool tuning ---
+            - name: KC_DB_POOL_INITIAL_SIZE
+              value: "5"
+            - name: KC_DB_POOL_MIN_SIZE
+              value: "5"
+            - name: KC_DB_POOL_MAX_SIZE
+              value: "20"
+
+            # --- Health & metrics ---
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+
+            # --- Network & proxy configuration (for ALB) ---
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HTTP_PORT
+              value: "8080"
+            - name: KC_PROXY
+              value: edge
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
+            - name: KC_HOSTNAME
+              value: kc2.aerowiseplatform.com
+
+            # --- Logging ---
+            - name: KC_LOG_LEVEL
+              value: "INFO"
+            - name: KC_LOG_CONSOLE_OUTPUT
+              value: "default"
+
+            # --- Cache configuration ---
+            - name: KC_CACHE
+              value: "ispn"
+            - name: KC_CACHE_STACK
+              value: "kubernetes"
+            - name: JAVA_OPTS_KC_HEAP
+              value: "-Xms1024m -Xmx2048m"
+
+            # --- JVM memory tuning ---
+            - name: JAVA_OPTS_APPEND
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -XX:+ExitOnOutOfMemoryError -Djava.net.preferIPv4Stack=true -Djgroups.dns.query=keycloak-headless.mobileapp.svc.cluster.local"
+
+          # --- Volume mounts for custom configurations ---
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: work
+              mountPath: /opt/keycloak/data
+
+          # --- Startup probe (wait for Keycloak to fully start) ---
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+
+          # --- Readiness probe (ready to accept traffic) ---
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # --- Liveness probe (restart if unhealthy) ---
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+      # --- Volumes ---
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: work
+          emptyDir: {}
+
+      # --- Pod affinity (spread across nodes) ---
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - keycloak
+                topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: mobileapp
+  labels:
+    app: keycloak
+spec:
+  type: ClusterIP
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    - name: management
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-headless
+  namespace: mobileapp
+  labels:
+    app: keycloak
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: jgroups
+      port: 7600
+      targetPort: 7600
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-sa
+  namespace: mobileapp
+  labels:
+    app: keycloak
