@@ -63,14 +63,6 @@ Production-grade infrastructure as code for the AeroWise B2B mobile application 
 │   │       ├── VERIFY_FLOW.md
 │   │       └── verify-flow.sh
 │   │
-│   ├── edge/                     # Supplemental stack (optional)
-│   │   ├── main.tf
-│   │   ├── outputs.tf
-│   │   ├── providers.tf
-│   │   ├── variables.tf
-│   │   └── static/
-│   │       └── index.html
-│   │
 │   └── modules/                  # Reusable Terraform modules
 │       ├── api-gateway/
 │       ├── cdn/
