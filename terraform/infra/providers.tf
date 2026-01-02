@@ -1,6 +1,22 @@
 terraform {
   required_version = ">= 1.6.0"
 
+  # Backend Configuration for Remote State Storage
+  # S3 bucket with DynamoDB locking system
+  # To enable: 
+  #   1. Run setup-backend.sh to create S3 bucket and DynamoDB table
+  #   2. Move backend.tf from terraform/ root to this directory (terraform/infra/)
+  #   3. Run: terraform init (to migrate state to S3)
+  # 
+  # Local backend is used by default. Uncomment below to switch to S3:
+  # backend "s3" {
+  #   bucket         = "aerowise-t1-terraform-state"
+  #   key            = "prod/terraform.tfstate"
+  #   region         = "us-east-1"
+  #   dynamodb_table = "aerowise-t1-terraform-locks"
+  #   encrypt        = true
+  # }
+
   required_providers {
     aws = {
       source = "hashicorp/aws"

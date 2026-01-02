@@ -374,7 +374,7 @@ module "rds_postgres" {
   db_password = var.db_password
 
   db_instance_class   = "db.t3.medium"
-  allocated_storage   = 20
+  allocated_storage   = 50  # 50 GB for 2-3 years growth headroom
   storage_type        = "gp3"
   engine_version      = "17.6"
   skip_final_snapshot = var.rds_skip_final_snapshot
@@ -429,7 +429,7 @@ module "security_hub" {
   source = "../modules/security-hub"
 
   project_name         = var.project_name
-  aws_region           = "us-east-1"
+  aws_region           = var.aws_region  # Use variable instead of hardcoded region
   environment          = "prod"
   auto_enable_controls = true
 
