@@ -176,7 +176,6 @@ resource "aws_instance" "nifi" {
   user_data_base64 = base64encode(templatefile("${path.module}/user_data.sh", {
     PROJECT_NAME            = var.project_name
     NIFI_VERSION            = var.nifi_version
-    DEVICE_NAME             = var.ebs_device_name
     ENABLE_KEYCLOAK         = var.enable_keycloak_auth ? "true" : "false"
     KEYCLOAK_URL            = var.keycloak_url
     KEYCLOAK_REALM          = var.keycloak_realm
@@ -291,6 +290,6 @@ resource "aws_cloudwatch_metric_alarm" "nifi_disk_usage" {
 
   dimensions = {
     InstanceId = aws_instance.nifi.id
-    device     = var.ebs_device_name
+    device     = "/"
   }
 }

@@ -18,9 +18,9 @@ output "security_group_id" {
   value       = aws_security_group.nifi.id
 }
 
-output "ebs_volume_id" {
-  description = "EBS volume ID for NiFi data storage"
-  value       = aws_ebs_volume.nifi_data.id
+output "root_volume_id" {
+  description = "Root volume ID for NiFi (128GB gp3)"
+  value       = aws_instance.nifi.root_block_device[0].volume_id
 }
 
 output "iam_role_arn" {
