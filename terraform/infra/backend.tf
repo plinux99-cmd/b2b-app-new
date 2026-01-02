@@ -20,14 +20,14 @@
 # OPTION 3: Hardcode values below (least flexible)
 #   Uncomment and update the backend block below with your specific values
 
-# Partial configuration - values provided via backend.tfvars or CLI
+# S3 Backend Configuration - Multi-Account Ready
 terraform {
   backend "s3" {
-    # Partial backend configuration
-    # Actual values provided via:
-    #   - backend.tfvars file (copy from backend.tfvars.example)
-    #   - CLI arguments during terraform init
-    #   - Environment variables: AWS_S3_BUCKET, AWS_DYNAMODB_TABLE, etc.
+    bucket         = "aerowise-t1-terraform-state"
+    key            = "prod/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "aerowise-t1-terraform-locks"
+    encrypt        = true
   }
 }
 
